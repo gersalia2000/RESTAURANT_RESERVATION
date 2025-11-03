@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Login - Plate & Chill</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="form-wrapper">
+    <div class="title">☕ Plate & Chill</div>
+    <h2>Login</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <input type="text" name="username" placeholder="Username" required>
+      <div class="password-wrapper">
+        <input id="login-password" type="password" name="password" placeholder="Password" required>
+        <span class="toggle-password" onclick="togglePassword('login-password', this)">👁️</span>
+      </div>
+      <button type="submit">Login</button>
+    </form>
+
+    <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+  </div>
+
+<script>
+function togglePassword(id, icon) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  icon.textContent = el.type === 'password' ? '👁️' : '🙈';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+# create templates folder if missing
+New-Item -ItemType Directory -Path .\templates -Force | Out-Null
+
+# create login.html (overwrites if exists)
+@"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Login - Restaurant Reservation</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;color:#111;padding:20px;}
+    .box{max-width:420px;margin:40px auto;padding:24px;border-radius:8px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+    input{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:6px}
+    button{padding:10px 16px;border-radius:6px;border:none;background:#0b7cff;color:#fff;cursor:pointer}
+    .flash{padding:8px;border-radius:6px;margin-bottom:10px}
+    .error{background:#ffe6e6;color:#900}
+    .success{background:#e6ffea;color:#060}
+    a{color:#0b7cff}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Login</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <label>Username</label>
+      <input type="text" name="username" required>
+
+      <label>Password</label>
+      <input type="password" name="password" required>
+
+      <div style="margin-top:12px">
+        <button type="submit">Login</button>
+      </div>
+    </form>
+
+    <p style="margin-top:12px">Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+  </div>
+</body>
+</html>
+"@ | Out-File -FilePath .\templates\login.html -Encoding utf8
+

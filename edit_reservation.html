@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Reservation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Edit Reservation</h2>
+    <form method="POST">
+        Number of People: <input type="number" name="people" value="{{ reservation[2] }}" required><br>
+        Date: <input type="date" name="date" value="{{ reservation[3] }}" required><br>
+        Time: <input type="time" name="time" value="{{ reservation[4] }}" required><br>
+        <input type="submit" value="Update">
+    </form>
+    <p><a href="/admin">Back to Admin Dashboard</a></p>
+</body>
+</html>
