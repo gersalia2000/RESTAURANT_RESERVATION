@@ -1,17 +1,151 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Edit Reservation</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <h2>Edit Reservation</h2>
-    <form method="POST">
-        Number of People: <input type="number" name="people" value="{{ reservation[2] }}" required><br>
-        Date: <input type="date" name="date" value="{{ reservation[3] }}" required><br>
-        Time: <input type="time" name="time" value="{{ reservation[4] }}" required><br>
-        <input type="submit" value="Update">
-    </form>
-    <p><a href="/admin">Back to Admin Dashboard</a></p>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Reservations - Plate & Chill{% endblock %}
+
+{% block content %}
+<section class="reservation-bg" aria-label="Reservations background">
+  <div style="width:100%; padding:40px 0;">
+    <div class="container" style="max-width:1100px; margin:0 auto;">
+      <div style="display:flex; gap:20px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:320px;">
+          <div class="card">
+            {% if not session.get('username') %}
+              <h3>Register</h3>
+              <form method="POST" action="{{ url_for('register') }}">
+                <input type="text" name="username" placeholder="Full name" required>
+                <input type="email" name="email" placeholder="Email" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button class="btn" type="submit" style="width:100%; margin-top:10px;">Register & Login</button>
+              </form>
+            {% else %}
+              <p>Logged in as <strong>{{ session.get('username') }}</strong></p>
+              <a href="{{ url_for('logout') }}" class="btn" style="display:inline-block; margin-top:10px;">Logout</a>
+            {% endif %}
+          </div>
+          <div class="card" style="margin-top:12px;">
+            <h3>Book a Table</h3>
+            <form id="resForm" method="POST" action="{{ url_for('create_reservation') }}">
+              <label>People</label>
+              <select name="people" required>
+                {% for i in range(1,11) %}
+                  <option value="{{ i }}">{{ i }} person{{ 's' if i>1 else '' }}</option>
+                {% endfor %}
+              </select>
+
+              <label>Date</label>
+              <input type="date" name="date" required>
+
+              <label>Time</label>
+              <select name="time" required>
+                {% for t in times %}
+                  <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+              </select>
+
+              <input type="hidden" name="items" id="reservation_items" value="">
+              <div style="display:flex; gap:8px; margin-top:12px;">
+                <button type="button" id="openMenuBtn" class="btn">Open Menu</button>
+                <button type="submit" class="btn" style="background:#2d7a2d;">Submit Reservation</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div style="flex:1; min-width:320px;">
+          <div class="card">
+            <h3>Your Upcoming</h3>
+            <p>Reservations and orders will appear here after creation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="menuModal" class="modal" aria-hidden="true" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6);">
+  <div class="modal-content" style="background:#fff; max-width:800px; margin:50px auto; padding:20px; border-radius:8px; position:relative;">
+    <header class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+      <h3>Menu</h3>
+      <button id="closeMenuModal" class="btn">Close</button>
+    </header>
+
+    <div class="modal-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px; margin-top:12px;">
+      {% for item in menu_items %}
+        <div class="modal-item menu-card" data-id="{{ item.id }}" data-name="{{ item.name }}" data-price="{{ item.price }}" style="border:1px solid #ddd; padding:8px; border-radius:6px; cursor:pointer; text-align:center;">
+          <img src="{{ item.img or 'https://via.placeholder.com/200x150?text=No+Image' }}" alt="{{ item.name }}" style="width:100%; height:120px; object-fit:cover; border-radius:4px;">
+          <div class="menu-info" style="margin-top:6px;">
+            <strong>{{ item.name }}</strong>
+            <p>₱{{ item.price }}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="order-panel" style="margin-top:20px; border-top:1px solid #ccc; padding-top:12px;">
+      <h4>Your Order</h4>
+      <div id="orderList"></div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="confirmOrdersBtn" class="btn" style="background:#2d7a2d;">Confirm Orders</button>
+        <button id="closeOrdersBtn" class="btn" style="background:#999;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const openMenuBtn = document.getElementById('openMenuBtn');
+  const menuModal = document.getElementById('menuModal');
+  const closeMenuModal = document.getElementById('closeMenuModal');
+  const closeOrdersBtn = document.getElementById('closeOrdersBtn');
+  const orderListEl = document.getElementById('orderList');
+  const confirmOrdersBtn = document.getElementById('confirmOrdersBtn');
+  const reservationItemsInput = document.getElementById('reservation_items');
+
+  let orders = [];
+
+  function findOrder(id){ return orders.find(o=>o.id===id); }
+
+  function renderOrders(){
+    orderListEl.innerHTML = '';
+    orders.forEach(o=>{
+      const div = document.createElement('div');
+      div.className = 'order-row';
+      div.textContent = `${o.name} x ${o.qty} - ₱${o.price * o.qty}`;
+      orderListEl.appendChild(div);
+    });
+    reservationItemsInput.value = JSON.stringify(orders.map(o=>({id:o.id,qty:o.qty})));
+  }
+
+  openMenuBtn.addEventListener('click', ()=> {
+    menuModal.style.display = 'block';
+    menuModal.setAttribute('aria-hidden','false');
+  });
+
+  closeMenuModal.addEventListener('click', ()=> {
+    menuModal.style.display = 'none';
+    menuModal.setAttribute('aria-hidden','true');
+  });
+
+  closeOrdersBtn.addEventListener('click', ()=> {
+    menuModal.style.display = 'none';
+  });
+
+  document.querySelectorAll('.modal-item').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const id = parseInt(card.getAttribute('data-id'));
+      const name = card.getAttribute('data-name');
+      const price = parseInt(card.getAttribute('data-price'));
+      const existing = findOrder(id);
+      if(existing) existing.qty += 1;
+      else orders.push({id:id,name:name,qty:1,price:price});
+      renderOrders();
+    });
+  });
+
+  confirmOrdersBtn.addEventListener('click', ()=>{
+    if(orders.length===0){ alert('No items added.'); return; }
+    reservationItemsInput.value = JSON.stringify(orders.map(o=>({id:o.id,qty:o.qty})));
+    alert('Orders confirmed!');
+    menuModal.style.display = 'none';
+  });
+</script>
+{% endblock %}
