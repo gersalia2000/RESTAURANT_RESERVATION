@@ -1,410 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Plate & Chill - Online Booking</title>
-<style>
-  
-  body {
-    margin: 0;
-    font-family: "Segoe UI", sans-serif;
-    background: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80') no-repeat center center fixed;
-    background-size: cover;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plate & Chill | Reservations</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+    }
+    .container {
+      background: rgba(0, 0, 0, 0.6);
+      padding: 50px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      width: 360px;
+    }
+    h1 {
+      font-size: 26px;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #e85d04;
+      border: none;
+      color: white;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #d9480f;
+    }
 
-  .container {
-    background-color: rgba(255, 255, 255, 0.95);
-    padding: 30px 40px;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.25);
-    width: 420px;
-    text-align: center;
-  }
+    .reservation-form {
+      display: none;
+      margin-top: 20px;
+    }
 
-  h1 {
-    font-family: 'Georgia', serif;
-    color: #333;
-    margin-bottom: 5px;
-  }
+    input {
+      width: 85%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+    }
 
-  h3 {
-    margin-top: 0;
-    color: #555;
-    margin-bottom: 20px;
-  }
+    .submit-btn {
+      width: 90%;
+      background: #e85d04;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
 
-  select, input, button {
-    padding: 10px;
-    margin: 5px 0;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-    outline: none;
-  }
-
-  select, input[type="number"] {
-    width: 100%;
-    box-sizing: border-box;
-    text-align: center;
-  }
-
-  input[type="number"] {
-    max-width: 80px;
-  }
-
-  button {
-    width: 100%;
-    background-color: #6b4f4f;
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-    border-radius: 8px;
-    margin-top: 10px;
-    padding: 10px;
-  }
-
-  button:hover {
-    background-color: #8b5e5e;
-  }
-
-  .popup {
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-    justify-content: center;
-    align-items: flex-start;
-    overflow-y: auto;
-    padding: 40px 0;
-    z-index: 9999;
-  }
-
-  .popup-content {
-    background-color: rgba(255,255,255,0.95);
-    padding: 20px;
-    width: 95%;
-    max-width: 1200px;
-    border-radius: 12px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    position: relative;
-  }
-
-  .menu-section {
-    flex: 2;
-    min-width: 600px;
-    margin-right: 20px;
-  }
-
-  .menu-section h2 {
-    text-align: center;
-  }
-
-  .menu-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 10px;
-  }
-
-  .menu-item {
-    background-color: #f8f8f8;
-    border-radius: 10px;
-    padding: 10px;
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-
-  .menu-item img {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-    border-radius: 8px;
-    margin-bottom: 8px;
-  }
-
-  .menu-item h4 {
-    margin: 5px 0;
-    font-size: 14px;
-    color: #333;
-  }
-
-  .menu-item p {
-    margin: 2px 0;
-    font-size: 13px;
-    color: #555;
-  }
-
-  .menu-item button {
-    background-color: #6b4f4f;
-    border: none;
-    color: white;
-    border-radius: 5px;
-    padding: 6px 10px;
-    margin-top: 5px;
-    width: 100%;
-    font-size: 13px;
-    cursor: pointer;
-  }
-
-  .menu-item button:hover {
-    background-color: #8b5e5e;
-  }
-
-  .orders-section {
-    flex: 1;
-    min-width: 250px;
-    background: #f1f1f1;
-    border-radius: 10px;
-    padding: 15px;
-    max-height: 600px;
-    overflow-y: auto;
-  }
-
-  .orders-section h3 {
-    margin-top: 0;
-    text-align: center;
-  }
-
-  .order-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #fff;
-    margin-bottom: 5px;
-    padding: 5px;
-    border-radius: 5px;
-    font-size: 14px;
-  }
-
-  .order-item span {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .order-item input {
-    width: 50px;
-    text-align: center;
-    margin: 0 5px;
-  }
-
-  .order-item button {
-    width: 25px;
-    padding: 0;
-    margin: 0;
-    background: #b22222;
-    font-weight: bold;
-    border-radius: 4px;
-  }
-
-  .order-item button:hover {
-    background: #d63031;
-  }
-
-  .orders-section .total {
-    font-weight: bold;
-    text-align: right;
-    margin-top: 10px;
-  }
-
-  .orders-section button.confirm-btn {
-    background-color: #6b4f4f;
-    margin-top: 10px;
-  }
-
-  .orders-section button.confirm-btn:hover {
-    background-color: #8b5e5e;
-  }
-
-  .orders-section button.close-btn {
-    background-color: #b22222;
-    margin-top: 5px;
-  }
-
-  .orders-section button.close-btn:hover {
-    background-color: #d63031;
-  }
-</style>
+    .submit-btn:hover {
+      background: #d9480f;
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Welcome to Plate & Chill</h1>
+    <button id="reserveBtn">Reservations</button>
 
-<div class="container">
-  <h1>🍽️ Plate & Chill</h1>
-  <h3>Online Booking</h3>
-
-  <button id="openMenuBtn">🍴 Open Menu</button>
-
-  <div style="margin-top: 20px;">
-    <label>Day</label>
-    <select id="daySelect">
-      <option>Choose day</option>
-      <option>Monday</option>
-      <option>Tuesday</option>
-      <option>Wednesday</option>
-      <option>Thursday</option>
-      <option>Friday</option>
-      <option>Saturday</option>
-      <option>Sunday</option>
-    </select>
-
-    <label>Time</label>
-    <select id="timeSelect">
-      <option>Choose time</option>
-      <option>12:00 PM - 2:00 PM</option>
-      <option>2:00 PM - 4:00 PM</option>
-      <option>6:00 PM - 8:00 PM</option>
-      <option>8:00 PM - 10:00 PM</option>
-    </select>
-
-    <label>People</label>
-    <input type="number" id="peopleInput" min="1" max="20" value="3">
+    <form class="reservation-form" id="reserveForm" method="POST" action="/register">
+      <input type="text" name="username" placeholder="Full Name" required>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit" class="submit-btn">Submit Reservation</button>
+    </form>
   </div>
 
-  <button id="reserveBtn">Reserve</button>
-  <button id="logoutBtn">Logout</button>
-</div>
+  <script>
+    const reserveBtn = document.getElementById('reserveBtn');
+    const form = document.getElementById('reserveForm');
 
-<!-- MENU POPUP -->
-<div class="popup" id="menuPopup">
-  <div class="popup-content">
-    <div class="menu-section">
-      <h2>Foods & Drinks</h2>
-      <div class="menu-grid" id="menuList"></div>
-    </div>
-    <div class="orders-section">
-      <h3>Your Orders</h3>
-      <div id="orderList"></div>
-      <div class="total" id="totalAmount">Total: ₱0</div>
-      <button class="confirm-btn" id="confirmOrderBtn">Confirm Order</button>
-      <button class="close-btn" id="closeMenuBtn">Close Menu</button>
-    </div>
-  </div>
-</div>
-
-<script>
-const MENU_ITEMS = [
-  {"name":"Grilled Chicken Alfredo Pasta","category":"Food","price":280,"image":"https://images.unsplash.com/photo-1622445275299-6c2b4d3a93c3?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Classic Beef Burger with Fries","category":"Food","price":240,"image":"https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Garlic Butter Shrimp","category":"Food","price":300,"image":"https://images.unsplash.com/photo-1603079848834-25b7a1ab9a6d?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Chicken Teriyaki Rice Bowl","category":"Food","price":220,"image":"https://images.unsplash.com/photo-1603079848264-fb9b6f1b8b33?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Crispy Pork Sisig","category":"Food","price":260,"image":"https://images.unsplash.com/photo-1604908812444-1f0fdd3e5c85?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Beef Tapa with Garlic Rice and Egg","category":"Food","price":200,"image":"https://images.unsplash.com/photo-1638202993863-93c6cc768f3a?auto=format&fit=crop&w=500&q=80"},
-  {"name":"BBQ Ribs with Mashed Potato","category":"Food","price":350,"image":"https://images.unsplash.com/photo-1565958011705-44a2d3fda33a?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Baked Macaroni with Cheese","category":"Food","price":180,"image":"https://images.unsplash.com/photo-1632778149950-36bb9b36ef89?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Margherita Pizza","category":"Food","price":320,"image":"https://images.unsplash.com/photo-1601924582971-06c7be7a96a6?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Spicy Tuna Sandwich","category":"Food","price":170,"image":"https://images.unsplash.com/photo-1606755962773-33e41e74f6cf?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Fried Chicken Bucket","category":"Food","price":400,"image":"https://images.unsplash.com/photo-1606756790138-8fef9a4a1b1a?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Seafood Platter","category":"Food","price":550,"image":"https://images.unsplash.com/photo-1617196034796-df87f9ac70d8?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Beef Steak","category":"Food","price":450,"image":"https://images.unsplash.com/photo-1612874742237-54e8b4f5e4b7?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Pork Chops","category":"Food","price":300,"image":"https://images.unsplash.com/photo-1598514982228-1a1cfb4b7b8e?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Vegetable Salad","category":"Food","price":150,"image":"https://images.unsplash.com/photo-1612197527984-dc0b99e751f2?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Spaghetti Bolognese","category":"Food","price":250,"image":"https://images.unsplash.com/photo-1601050690597-c0d0e6b35e2a?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Chicken Wings","category":"Food","price":200,"image":"https://images.unsplash.com/photo-1626201200877-9c6f730a1b3e?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Grilled Salmon","category":"Food","price":500,"image":"https://images.unsplash.com/photo-1615937613625-ea907a33e0e8?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Sushi Platter","category":"Food","price":600,"image":"https://images.unsplash.com/photo-1604908813447-8e8e25b4a9aa?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Beef Lasagna","category":"Food","price":350,"image":"https://images.unsplash.com/photo-1615937657717-dc99e1b3b893?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Iced Caramel Macchiato","category":"Drink","price":120,"image":"https://images.unsplash.com/photo-1570848835188-2f8b40fd39df?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Classic Brewed Coffee","category":"Drink","price":60,"image":"https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Iced Mocha Latte","category":"Drink","price":130,"image":"https://images.unsplash.com/photo-1572327190505-1c4f8e7c7462?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Milk Tea (Wintermelon)","category":"Drink","price":90,"image":"https://images.unsplash.com/photo-1592928302792-6ef30910a4f5?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Mango Shake","category":"Drink","price":110,"image":"https://images.unsplash.com/photo-1623064481159-bb3dc47c96bb?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Chocolate Milkshake","category":"Drink","price":120,"image":"https://images.unsplash.com/photo-1565958011705-44a2d3fda33a?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Strawberry Smoothie","category":"Drink","price":130,"image":"https://images.unsplash.com/photo-1623428187969-084aa6cfebd6?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Green Tea Latte","category":"Drink","price":100,"image":"https://images.unsplash.com/photo-1603079848862-4e1d406f9a0a?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Iced Americano","category":"Drink","price":70,"image":"https://images.unsplash.com/photo-1592928302979-df19aafd0f4a?auto=format&fit=crop&w=500&q=80"},
-  {"name":"Hot Chocolate","category":"Drink","price":110,"image":"https://images.unsplash.com/photo-1572448862528-843af37f04b4?auto=format&fit=crop&w=500&q=80"}
-];
-
-let orders = [];
-
-const openMenuBtn = document.getElementById('openMenuBtn');
-const closeMenuBtn = document.getElementById('closeMenuBtn');
-const menuPopup = document.getElementById('menuPopup');
-const menuList = document.getElementById('menuList');
-const orderList = document.getElementById('orderList');
-const totalAmount = document.getElementById('totalAmount');
-const confirmOrderBtn = document.getElementById('confirmOrderBtn');
-
-function renderMenu() {
-  menuList.innerHTML = '';
-  MENU_ITEMS.forEach((item,index)=>{
-    const div = document.createElement('div');
-    div.className = 'menu-item';
-    div.innerHTML = `
-      <img src="${item.image}" alt="${item.name}">
-      <h4>${item.name}</h4>
-      <p>₱${item.price}</p>
-      <button onclick="addOrder(${index})">Add</button>`;
-    menuList.appendChild(div);
-  });
-}
-
-function addOrder(index){
-  const item = MENU_ITEMS[index];
-  const existing = orders.find(o=>o.name===item.name);
-  if(existing) existing.qty++;
-  else orders.push({...item,qty:1});
-  renderOrders();
-}
-
-function renderOrders(){
-  orderList.innerHTML='';
-  let total=0;
-  orders.forEach((o,i)=>{
-    total+=o.price*o.qty;
-    const div=document.createElement('div');
-    div.className='order-item';
-    div.innerHTML=`<span>${o.name} - ₱${o.price}</span>
-      <input type="number" min="1" value="${o.qty}" onchange="updateQty(${i},this.value)">
-      <button onclick="removeOrder(${i})">x</button>`;
-    orderList.appendChild(div);
-  });
-  totalAmount.textContent = `Total: ₱${total}`;
-}
-
-function updateQty(index,value){
-  const qty=parseInt(value);
-  if(qty<1) return;
-  orders[index].qty=qty;
-  renderOrders();
-}
-
-function removeOrder(index){
-  orders.splice(index,1);
-  renderOrders();
-}
-
-openMenuBtn.addEventListener('click',()=>{
-  menuPopup.style.display='flex';
-  renderMenu();
-});
-
-closeMenuBtn.addEventListener('click',()=>{
-  menuPopup.style.display='none';
-});
-
-confirmOrderBtn.addEventListener('click',()=>{
-  if(orders.length===0){
-    alert('No orders yet!');
-    return;
-  }
-  alert('Order confirmed! Thank you.');
-  orders=[];
-  renderOrders();
-  menuPopup.style.display='none';
-});
-</script>
-
+    reserveBtn.addEventListener('click', () => {
+      form.style.display = form.style.display === 'block' ? 'none' : 'block';
+      reserveBtn.textContent = form.style.display === 'block' ? 'Close' : 'Reservations';
+    });
+  </script>
 </body>
 </html>
