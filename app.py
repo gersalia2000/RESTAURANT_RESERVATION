@@ -5,11 +5,11 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = "dev-plate-chill-secret"  # change for production
+app.secret_key = "dev-plate-chill-secret"  # change in production
 
 DB_HOST = "localhost"
 DB_USER = "root"
-DB_PASSWORD = ""  # default for XAMPP
+DB_PASSWORD = ""
 DB_NAME = "restaurant_db"
 
 ALLOWED_START_TIMES = [
@@ -18,14 +18,14 @@ ALLOWED_START_TIMES = [
 ]
 
 MENU_ITEMS = [
-    {"id": 1, "name": "Herb‑Roasted Chicken & Veggies", "category": "Food", "price": 300, "img": "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=900&q=80"},
+    {"id": 1, "name": "Herb-Roasted Chicken & Veggies", "category": "Food", "price": 300, "img": "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=900&q=80"},
     {"id": 2, "name": "Smoked Beef Brisket with Slaw", "category": "Food", "price": 320, "img": "https://images.unsplash.com/photo-1555992336-03a23c3bf2c8?auto=format&fit=crop&w=900&q=80"},
     {"id": 3, "name": "Garlic Butter Shrimp Linguine", "category": "Food", "price": 280, "img": "https://images.unsplash.com/photo-1625944230921-9c1abcb2a5cb?auto=format&fit=crop&w=900&q=80"},
     {"id": 4, "name": "Teriyaki Chicken Rice Bowl", "category": "Food", "price": 240, "img": "https://images.unsplash.com/photo-1562967914-608fb3f1f2fe?auto=format&fit=crop&w=900&q=80"},
     {"id": 5, "name": "Crispy Pork Sisig Platter", "category": "Food", "price": 260, "img": "https://images.unsplash.com/photo-1617191511073-6e6b5f1d2c3d?auto=format&fit=crop&w=900&q=80"},
     {"id": 6, "name": "BBQ Baby Back Ribs & Mash", "category": "Food", "price": 350, "img": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=900&q=80"},
     {"id": 7, "name": "Baked Mac & Cheese Supreme", "category": "Food", "price": 200, "img": "https://images.unsplash.com/photo-1599785209796-9cfbfe2b1d4d?auto=format&fit=crop&w=900&q=80"},
-    {"id": 8, "name": "Margherita Wood‑Fired Pizza", "category": "Food", "price": 330, "img": "https://images.unsplash.com/photo-1548365328-88f0e58d2b1e?auto=format&fit=crop&w=900&q=80"},
+    {"id": 8, "name": "Margherita Wood-Fired Pizza", "category": "Food", "price": 330, "img": "https://images.unsplash.com/photo-1548365328-88f0e58d2b1e?auto=format&fit=crop&w=900&q=80"},
     {"id": 9, "name": "Beef Tapa with Garlic Rice & Egg", "category": "Food", "price": 220, "img": "https://images.unsplash.com/photo-1611078489734-4d9fcb4a9f2c?auto=format&fit=crop&w=900&q=80"},
     {"id": 10, "name": "Crispy Pata Filipino Style", "category": "Food", "price": 420, "img": "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=900&q=80"},
     {"id": 11, "name": "Adobo Flakes Rice Bowl", "category": "Food", "price": 190, "img": "https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&w=900&q=80"},
@@ -44,7 +44,8 @@ def get_db():
             user=DB_USER,
             password=DB_PASSWORD,
             database=DB_NAME,
-            cursorclass=pymysql.cursors.DictCursor
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=False
         )
     return g.db
 
@@ -52,7 +53,10 @@ def get_db():
 def close_db(exception):
     db = g.pop("db", None)
     if db:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
 
 def init_db():
     db = get_db()
@@ -63,6 +67,7 @@ def init_db():
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(255) NOT NULL,
             email VARCHAR(255) NOT NULL UNIQUE,
+            number VARCHAR(50),
             password_hash VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -91,17 +96,10 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
         )
     """)
-    
     db.commit()
 
 with app.app_context():
     init_db()
-
-def find_item_by_id(iid):
-    for it in MENU_ITEMS:
-        if it["id"] == int(iid):
-            return it
-    return None
 
 @app.route("/")
 def home():
@@ -121,100 +119,163 @@ def contact():
 
 @app.route("/reservations")
 def reservations():
+    if "user_id" not in session:
+        flash("Please log in first.", "warning")
+        return redirect(url_for("login"))
     return render_template("reservations.html", times=ALLOWED_START_TIMES, menu_items=MENU_ITEMS)
 
-@app.route("/register", methods=["POST"])
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    username = request.form.get("username","").strip()
-    email = request.form.get("email","").strip()
-    password = request.form.get("password","")
-    if not username or not email or not password:
-        flash("Please provide name, email and password.", "error")
-        return redirect(url_for("reservations"))
-    
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT id FROM users WHERE email=%s", (email,))
-    if cursor.fetchone():
-        flash("Email already used. Please login or use a different email.", "error")
-        return redirect(url_for("reservations"))
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        number = request.form.get("number", "").strip()
+        password = request.form.get("password", "")
 
-    pw = generate_password_hash(password)
-    cursor.execute("INSERT INTO users (username,email,password_hash) VALUES (%s,%s,%s)", (username,email,pw))
-    db.commit()
-    
-    session["user_id"] = cursor.lastrowid
-    session["username"] = username
-    flash("Registered and logged in.", "success")
-    return redirect(url_for("reservations"))
+        if not username or not email or not password or not number:
+            flash("All fields are required.", "error")
+            return redirect(url_for("register"))
 
-@app.route("/create_order", methods=["POST"])
-def create_order():
-    user_id = session.get("user_id")
-    items_json = request.form.get("items")
-    if not items_json:
-        return jsonify({"error":"no items"}), 400
-    try:
-        items = json.loads(items_json)
-    except Exception:
-        return jsonify({"error":"bad json"}), 400
+        db = get_db()
+        cursor = db.cursor()
+        try:
+            cursor.execute("SELECT id FROM users WHERE email=%s", (email,))
+            if cursor.fetchone():
+                flash("Email already exists. Please login.", "error")
+                return redirect(url_for("login"))
 
-    total = 0
-    saved = []
-    for it in items:
-        iid = int(it.get("id"))
-        qty = int(it.get("qty",1))
-        item = find_item_by_id(iid)
-        if item:
-            saved.append({"id":item["id"], "name":item["name"], "price":item["price"], "qty":qty})
-            total += item["price"] * qty
+            pw_hash = generate_password_hash(password)
+            cursor.execute(
+                "INSERT INTO users (username, email, number, password_hash) VALUES (%s, %s, %s, %s)",
+                (username, email, number, pw_hash)
+            )
+            db.commit()
+            flash("Registration successful. You can now log in.", "success")
+            return redirect(url_for("login"))
+        except Exception as e:
+            db.rollback()
+            flash("An error occurred during registration. Please try again.", "error")
+            return redirect(url_for("register"))
 
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        "INSERT INTO orders (reservation_id, user_id, items, total) VALUES (%s,%s,%s,%s)",
-        (None, user_id, json.dumps(saved), total)
-    )
-    db.commit()
-    return jsonify({"ok":True, "total": total})
+    return render_template("register.html")
 
-@app.route("/create_reservation", methods=["POST"])
-def create_reservation():
-    user_id = session.get("user_id")
-    people = request.form.get("people") or 1
-    date_part = request.form.get("date")
-    time_part = request.form.get("time")
-    items_json = request.form.get("items") or request.form.get("reservation_items")
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        login_identifier = request.form.get("username", "").strip() or request.form.get("email", "").strip()
+        password = request.form.get("password", "")
 
-    if not date_part or not time_part:
-        flash("Please pick date and time.", "error")
-        return redirect(url_for("reservations"))
+        if not login_identifier or not password:
+            flash("Please provide your name/email and password.", "error")
+            return redirect(url_for("login"))
 
-    try:
-        dt = datetime.strptime(f"{date_part} {time_part}", "%Y-%m-%d %H:%M")
-    except Exception:
-        dt = f"{date_part} {time_part}"
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM users WHERE username=%s", (login_identifier,))
+        user = cursor.fetchone()
+        if not user:
+            cursor.execute("SELECT * FROM users WHERE email=%s", (login_identifier,))
+            user = cursor.fetchone()
 
-    try:
-        people_int = int(people)
-    except:
-        people_int = 1
+        if user and check_password_hash(user["password_hash"], password):
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            flash(f"Welcome back, {user['username']}!", "success")
+            return redirect(url_for("reservations"))
+        else:
+            flash("Invalid name/email or password.", "error")
 
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        "INSERT INTO reservations (user_id, time, people, items) VALUES (%s,%s,%s,%s)",
-        (user_id, dt, people_int, items_json or "[]")
-    )
-    db.commit()
-    flash("Reservation saved. Thank you!", "success")
-    return redirect(url_for("reservations"))
+    return render_template("login.html")
 
 @app.route("/logout")
 def logout():
     session.clear()
-    flash("Logged out.", "info")
+    flash("You have been logged out.", "info")
     return redirect(url_for("home"))
+
+def parse_reservation_datetime(date_part: str, time_part: str):
+    """
+    Try to parse combination of date and time into a datetime object.
+    Accepts:
+      - date 'YYYY-MM-DD' and time 'HH:MM' (24-hour)
+      - date and time 'HH:MMam' or 'HH:MMpm' or with a space 'HH:MM am'
+      - time ranges like '08:00am-10:00am' -> use start '08:00am'
+    Returns datetime or raises ValueError.
+    """
+    if not date_part or not time_part:
+        raise ValueError("Missing date or time")
+
+    if "-" in time_part:
+        time_part = time_part.split("-")[0].strip()
+
+    time_part = time_part.strip()
+
+    attempt_formats = [
+        ("%Y-%m-%d %H:%M", "%H:%M"),        # date + 24-hour (e.g. '18:30')
+        ("%Y-%m-%d %I:%M%p", "%I:%M%p"),    # date + 12-hour with am/pm (e.g. '06:30PM' or '6:30pm')
+        ("%Y-%m-%d %I:%M %p", "%I:%M %p"),  # date + '6:30 pm' with space
+    ]
+
+    for fmt_full, _ in attempt_formats:
+        try:
+            candidate = f"{date_part} {time_part}"
+            # Some time parts might be like '08:00am' (lowercase am), python's strptime is case-insensitive for %p
+            return datetime.strptime(candidate, fmt_full)
+        except Exception:
+            continue
+
+    manual_time_formats = ["%H:%M", "%I:%M%p", "%I:%M %p"]
+    for tf in manual_time_formats:
+        try:
+            t = datetime.strptime(time_part, tf).time()
+            return datetime.strptime(date_part, "%Y-%m-%d").replace(hour=t.hour, minute=t.minute)
+        except Exception:
+            continue
+
+    raise ValueError("Invalid time format")
+
+@app.route("/create_reservation", methods=["POST"])
+def create_reservation():
+    if "user_id" not in session:
+        flash("You must log in first.", "error")
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+    date_part = request.form.get("date", "")
+    time_part = request.form.get("time", "")
+    people_raw = request.form.get("people", "1")
+    items = request.form.get("items", "[]")
+
+    try:
+        people = int(people_raw)
+    except Exception:
+        people = 1
+
+    try:
+        dt = parse_reservation_datetime(date_part, time_part)
+    except Exception:
+        flash("Invalid date or time format.", "error")
+        return redirect(url_for("reservations"))
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        try:
+            json_items = json.loads(items) if isinstance(items, str) and items.strip() else []
+        except Exception:
+            json_items = []
+
+        cursor.execute(
+            "INSERT INTO reservations (user_id, time, people, items) VALUES (%s,%s,%s,%s)",
+            (user_id, dt, people, json.dumps(json_items))
+        )
+        db.commit()
+        flash("Reservation successfully created!", "success")
+        return redirect(url_for("reservations"))
+    except Exception as e:
+        db.rollback()
+        flash("Could not create reservation. Please try again.", "error")
+        return redirect(url_for("reservations"))
 
 if __name__ == "__main__":
     app.run(debug=True)
