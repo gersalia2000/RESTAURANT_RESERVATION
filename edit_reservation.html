@@ -2,6 +2,69 @@
 {% block title %}Reservations - Plate & Chill{% endblock %}
 
 {% block content %}
+<style>
+  body {
+    background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+  }
+
+  main, section {
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .card {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    color: #fff;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 8px;
+    margin: 6px 0;
+    border: none;
+    border-radius: 6px;
+  }
+
+  .btn {
+    background: #b58a43;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .btn:hover {
+    background: #d4a44f;
+  }
+
+  .back-home-inline {
+    display: inline-block;
+    margin-bottom: 16px;
+    text-decoration: none;
+    font-weight: 600;
+    background: #b58a43;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background 0.3s;
+  }
+  .back-home-inline:hover {
+    background: #d4a44f;
+  }
+</style>
+
+<a href="{{ url_for('home') }}" class="back-home-inline">← Back to Home</a>
+
 <section style="padding:40px 0;">
   <div style="max-width:1100px;margin:0 auto;">
     <div style="display:flex;gap:20px;flex-wrap:wrap;">
@@ -30,14 +93,17 @@
                 <option value="{{ i }}">{{ i }} person{{ 's' if i>1 else '' }}</option>
               {% endfor %}
             </select>
+
             <label>Date</label>
             <input type="date" name="date" required>
+
             <label>Time</label>
             <select name="time" required>
               {% for t in times %}
                 <option value="{{ t }}">{{ t }}</option>
               {% endfor %}
             </select>
+
             <input type="hidden" name="items" id="reservation_items" value="">
             <div style="display:flex;gap:8px;margin-top:12px;">
               <button type="button" id="openMenuBtn" class="btn">Open Menu</button>
@@ -57,7 +123,7 @@
   </div>
 </section>
 
-<div id="menuModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);">
+<div id="menuModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;">
   <div style="background:#fff;max-width:800px;margin:50px auto;padding:20px;border-radius:8px;position:relative;">
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <h3>Select Items</h3>
