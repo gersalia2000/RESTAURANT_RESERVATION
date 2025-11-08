@@ -5,25 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plate & Chill | Reservations</title>
   <style>
-    body {
+    :root {
+      --bg-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80');
+      --panel-overlay: rgba(0, 0, 0, 0.6);
+    }
+
+    html, body {
+      height: 100%;
       margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
       font-family: "Segoe UI", sans-serif;
-      background: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80') no-repeat center center fixed;
-      background-size: cover;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       color: #fff;
     }
+
+    body {
+      position: relative;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: transparent;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -9999;
+      background-image: var(--bg-image);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transform: translateZ(0);
+      will-change: transform;
+      pointer-events: none;
+    }
+
     .container {
-      background: rgba(0, 0, 0, 0.6);
+      background: var(--panel-overlay);
       padding: 50px;
       border-radius: 20px;
       text-align: center;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       width: 360px;
+      margin: 0 16px;
     }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
     h1 {
       font-size: 26px;
       margin-bottom: 20px;
