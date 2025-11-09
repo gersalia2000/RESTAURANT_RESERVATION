@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = "dev-plate-chill-secret"  # change in production
+app.secret_key = "dev-plate-chill-secret"  # CHANGE in production!
 
 DB_HOST = "localhost"
 DB_USER = "root"
@@ -152,7 +152,7 @@ def register():
             db.commit()
             flash("Registration successful. You can now log in.", "success")
             return redirect(url_for("login"))
-        except Exception as e:
+        except Exception:
             db.rollback()
             flash("An error occurred during registration. Please try again.", "error")
             return redirect(url_for("register"))
@@ -171,11 +171,8 @@ def login():
 
         db = get_db()
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM users WHERE username=%s", (login_identifier,))
+        cursor.execute("SELECT * FROM users WHERE username=%s OR email=%s", (login_identifier, login_identifier))
         user = cursor.fetchone()
-        if not user:
-            cursor.execute("SELECT * FROM users WHERE email=%s", (login_identifier,))
-            user = cursor.fetchone()
 
         if user and check_password_hash(user["password_hash"], password):
             session["user_id"] = user["id"]
@@ -194,38 +191,20 @@ def logout():
     return redirect(url_for("home"))
 
 def parse_reservation_datetime(date_part: str, time_part: str):
-    """
-    Try to parse combination of date and time into a datetime object.
-    Accepts:
-      - date 'YYYY-MM-DD' and time 'HH:MM' (24-hour)
-      - date and time 'HH:MMam' or 'HH:MMpm' or with a space 'HH:MM am'
-      - time ranges like '08:00am-10:00am' -> use start '08:00am'
-    Returns datetime or raises ValueError.
-    """
     if not date_part or not time_part:
         raise ValueError("Missing date or time")
-
     if "-" in time_part:
         time_part = time_part.split("-")[0].strip()
 
-    time_part = time_part.strip()
-
-    attempt_formats = [
-        ("%Y-%m-%d %H:%M", "%H:%M"),        # date + 24-hour (e.g. '18:30')
-        ("%Y-%m-%d %I:%M%p", "%I:%M%p"),    # date + 12-hour with am/pm (e.g. '06:30PM' or '6:30pm')
-        ("%Y-%m-%d %I:%M %p", "%I:%M %p"),  # date + '6:30 pm' with space
-    ]
-
-    for fmt_full, _ in attempt_formats:
+    formats = ["%Y-%m-%d %H:%M", "%Y-%m-%d %I:%M%p", "%Y-%m-%d %I:%M %p"]
+    for fmt in formats:
         try:
-            candidate = f"{date_part} {time_part}"
-            # Some time parts might be like '08:00am' (lowercase am), python's strptime is case-insensitive for %p
-            return datetime.strptime(candidate, fmt_full)
+            return datetime.strptime(f"{date_part} {time_part}", fmt)
         except Exception:
             continue
 
-    manual_time_formats = ["%H:%M", "%I:%M%p", "%I:%M %p"]
-    for tf in manual_time_formats:
+    manual_formats = ["%H:%M", "%I:%M%p", "%I:%M %p"]
+    for tf in manual_formats:
         try:
             t = datetime.strptime(time_part, tf).time()
             return datetime.strptime(date_part, "%Y-%m-%d").replace(hour=t.hour, minute=t.minute)
@@ -248,6 +227,8 @@ def create_reservation():
 
     try:
         people = int(people_raw)
+        if people < 1:
+            people = 1
     except Exception:
         people = 1
 
@@ -260,11 +241,7 @@ def create_reservation():
     db = get_db()
     cursor = db.cursor()
     try:
-        try:
-            json_items = json.loads(items) if isinstance(items, str) and items.strip() else []
-        except Exception:
-            json_items = []
-
+        json_items = json.loads(items) if items else []
         cursor.execute(
             "INSERT INTO reservations (user_id, time, people, items) VALUES (%s,%s,%s,%s)",
             (user_id, dt, people, json.dumps(json_items))
@@ -272,7 +249,7 @@ def create_reservation():
         db.commit()
         flash("Reservation successfully created!", "success")
         return redirect(url_for("reservations"))
-    except Exception as e:
+    except Exception:
         db.rollback()
         flash("Could not create reservation. Please try again.", "error")
         return redirect(url_for("reservations"))
