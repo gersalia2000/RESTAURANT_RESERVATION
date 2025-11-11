@@ -3,67 +3,93 @@
 
 {% block content %}
 <style>
-  body {
+  body.res-bg {
     background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80') !important;
     background-size: cover !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
     background-attachment: fixed !important;
-  }
-
-  main, section {
-    background: rgba(0, 0, 0, 0.55);
-    border-radius: 12px;
-    padding: 20px;
-  }
-
-  .card {
-    background: rgba(0, 0, 0, 0.6);
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     color: #fff;
   }
 
-  input, select {
-    width: 100%;
-    padding: 8px;
-    margin: 6px 0;
-    border: none;
-    border-radius: 6px;
-  }
+  main, section { background: rgba(0, 0, 0, 0.55); border-radius: 12px; padding: 20px; }
+  .card { background: rgba(0, 0, 0, 0.6); padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); color: #fff; }
+  input, select { width: 100%; padding: 8px; margin: 6px 0; border: none; border-radius: 6px; }
+  .btn { background: #b58a43; border: none; color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: background 0.3s; }
+  .btn:hover { background: #d4a44f; }
 
-  .btn {
-    background: #b58a43;
-    border: none;
+  #openMenuBtn {
+    background: linear-gradient(180deg, rgba(20,20,20,0.95), rgba(10,10,10,0.9));
     color: #fff;
-    padding: 8px 12px;
+    padding: 10px 18px;
     border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
+    border: 1px solid rgba(255,255,255,0.06);
+    font-weight:700;
+    letter-spacing:1px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
   }
 
-  .btn:hover {
-    background: #d4a44f;
+  #menuModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; }
+  #menuModal .modal-card {
+    background: rgba(10,10,10,0.95);
+    max-width:920px;
+    margin:40px auto;
+    padding:18px;
+    border-radius:10px;
+    color:#fff;
   }
 
-  .back-home-inline {
-    display: inline-block;
-    margin-bottom: 16px;
-    text-decoration: none;
-    font-weight: 600;
-    background: #b58a43;
-    color: #fff;
-    padding: 8px 12px;
-    border-radius: 6px;
-    transition: background 0.3s;
+  .menu-grid {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
   }
-  .back-home-inline:hover {
-    background: #d4a44f;
+
+  .menu-card {
+    padding:10px;
+    background: rgba(255,255,255,0.02);
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,0.04);
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  .menu-card .left { max-width:70%; }
+  .menu-card .name { font-weight:600; }
+  .menu-card .price { font-weight:700; min-width:80px; text-align:right; }
+
+  .order-item {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    padding:6px 8px;
+    border-bottom:1px dashed rgba(255,255,255,0.04);
+  }
+  .order-left { display:flex; align-items:center; gap:8px; min-width:0; }
+  .order-name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:320px;}
+  .order-controls { display:flex; gap:6px; align-items:center;}
+  .small-btn { background:transparent; border:1px solid rgba(255,255,255,0.08); color:#fff; padding:4px 8px; border-radius:6px; cursor:pointer;}
+  .small-btn:hover { background:rgba(255,255,255,0.02); }
+
+  .qty-badge { font-weight:700; padding:4px 8px; border-radius:6px; background:rgba(255,255,255,0.03); min-width:36px; text-align:center; }
+
+  .muted { color: rgba(255,255,255,0.6); font-size:13px; }
+
+  @media (max-width:800px) {
+    .menu-grid { grid-template-columns: 1fr; }
   }
 </style>
 
-<a href="{{ url_for('home') }}" class="back-home-inline">← Back to Home</a>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  document.body.classList.add('res-bg');
+});
+</script>
+
+<a href="{{ url_for('home') }}" class="back-home-inline" style="display:inline-block;margin-bottom:16px;text-decoration:none;font-weight:600;background:#b58a43;color:#fff;padding:8px 12px;border-radius:6px;">← Back to Home</a>
 
 <section style="padding:40px 0;">
   <div style="max-width:1100px;margin:0 auto;">
@@ -106,7 +132,7 @@
 
             <input type="hidden" name="items" id="reservation_items" value="">
             <div style="display:flex;gap:8px;margin-top:12px;">
-              <button type="button" id="openMenuBtn" class="btn">Open Menu</button>
+              <button type="button" id="openMenuBtn">OPEN MENU</button>
               <button type="submit" class="btn" style="background:#2d7a2d;">Submit</button>
             </div>
           </form>
@@ -123,32 +149,36 @@
   </div>
 </section>
 
-<div id="menuModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;">
-  <div style="background:#fff;max-width:800px;margin:50px auto;padding:20px;border-radius:8px;position:relative;">
+<div id="menuModal">
+  <div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <h3>Select Items</h3>
-      <button id="closeMenuModal" class="btn">Close</button>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:12px;">
-      {% for item in menu_items %}
-      <div class="menu-card" data-id="{{ item.id }}" data-name="{{ item.name }}" data-price="{{ item.price }}" style="border:1px solid #ddd;padding:8px;border-radius:6px;text-align:center;cursor:pointer;">
-        <img src="{{ item.img }}" alt="{{ item.name }}" style="width:100%;height:120px;object-fit:cover;border-radius:4px;">
-        <div style="margin-top:6px;">
-          <strong>{{ item.name }}</strong>
-          <p>₱{{ item.price }}</p>
-        </div>
+      <h3 style="margin:0">Select Items</h3>
+      <div>
+        <button id="closeMenuModal" class="btn" style="background:#b58a43;">Close</button>
       </div>
-      {% endfor %}
     </div>
 
-    <div style="margin-top:20px;border-top:1px solid #ccc;padding-top:12px;">
-      <h4>Your Order</h4>
-      <div id="orderList" style="min-height:60px; margin-bottom:8px;"></div>
-      <div id="orderTotal" style="font-weight:600; margin-bottom:12px;"></div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <button id="confirmOrdersBtn" class="btn" style="background:#2d7a2d;">Confirm Orders</button>
-        <button id="closeOrdersBtn" class="btn" style="background:#999;">Close</button>
+    <div style="margin-top:12px;">
+      <div class="menu-grid">
+        {% for item in menu_items %}
+        <div class="menu-card" data-id="{{ item.id }}" data-name="{{ item.name }}" data-price="{{ item.price }}">
+          <div class="left">
+            <div class="name">{{ item.name }}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.6)">{{ item.category }}</div>
+          </div>
+          <div class="price">₱{{ item.price }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">
+        <h4 style="margin:0 0 8px 0">Your Order</h4>
+        <div id="orderList" style="min-height:60px; margin-bottom:8px;"></div>
+        <div id="orderTotal" style="font-weight:600; margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button id="confirmOrdersBtn" class="btn" style="background:#2d7a2d;">Confirm Orders</button>
+          <button id="closeOrdersBtn" class="btn" style="background:#999;">Close</button>
+        </div>
       </div>
     </div>
   </div>
@@ -165,16 +195,117 @@
   const reservationItems = document.getElementById('reservation_items');
   let orders = [];
 
+  function findOrder(id) {
+    return orders.findIndex(o => o.id === id);
+  }
+
   function renderOrders() {
     orderList.innerHTML = '';
     let total = 0;
+    if (orders.length === 0) {
+      orderList.innerHTML = '<div class="muted">No items selected.</div>';
+      orderTotal.textContent = 'Total: ₱0';
+      reservationItems.value = JSON.stringify([]);
+      return;
+    }
+
     orders.forEach(o => {
-      const div = document.createElement('div');
-      div.textContent = `${o.name} x${o.qty} – ₱${o.price * o.qty}`;
-      orderList.appendChild(div);
-      total += o.price * o.qty;
+      const row = document.createElement('div');
+      row.className = 'order-item';
+
+      const left = document.createElement('div');
+      left.className = 'order-left';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = o.active !== false; // default true
+      checkbox.style.width = '16px';
+      checkbox.style.height = '16px';
+      checkbox.addEventListener('change', () => {
+        o.active = checkbox.checked;
+        renderOrders();
+      });
+
+      const name = document.createElement('div');
+      name.className = 'order-name';
+      name.textContent = o.name;
+
+      left.appendChild(checkbox);
+      left.appendChild(name);
+
+      const right = document.createElement('div');
+      right.className = 'order-controls';
+
+      const minus = document.createElement('button');
+      minus.className = 'small-btn';
+      minus.textContent = '−';
+      minus.title = 'Decrease quantity';
+      minus.addEventListener('click', () => {
+        if (o.qty > 1) o.qty--;
+        else {
+          const idx = findOrder(o.id);
+          if (idx > -1) orders.splice(idx,1);
+        }
+        renderOrders();
+      });
+
+      const qty = document.createElement('div');
+      qty.className = 'qty-badge';
+      qty.textContent = o.qty;
+
+      const plus = document.createElement('button');
+      plus.className = 'small-btn';
+      plus.textContent = '+';
+      plus.title = 'Increase quantity';
+      plus.addEventListener('click', () => {
+        o.qty++;
+        renderOrders();
+      });
+
+      const edit = document.createElement('button');
+      edit.className = 'small-btn';
+      edit.textContent = 'Edit';
+      edit.title = 'Set quantity';
+      edit.addEventListener('click', () => {
+        const val = prompt('Enter quantity for "' + o.name + '":', o.qty);
+        const n = parseInt(val);
+        if (!isNaN(n) && n > 0) {
+          o.qty = n;
+        }
+        renderOrders();
+      });
+
+      const remove = document.createElement('button');
+      remove.className = 'small-btn';
+      remove.textContent = 'Remove';
+      remove.title = 'Remove item';
+      remove.addEventListener('click', () => {
+        const idx = findOrder(o.id);
+        if (idx > -1) orders.splice(idx,1);
+        renderOrders();
+      });
+
+      const priceDiv = document.createElement('div');
+      priceDiv.style.minWidth = '80px';
+      priceDiv.style.textAlign = 'right';
+      priceDiv.textContent = `₱${o.price * o.qty}`;
+
+      right.appendChild(minus);
+      right.appendChild(qty);
+      right.appendChild(plus);
+      right.appendChild(edit);
+      right.appendChild(remove);
+      right.appendChild(priceDiv);
+
+      row.appendChild(left);
+      row.appendChild(right);
+
+      orderList.appendChild(row);
+
+      if (o.active !== false) total += o.price * o.qty;
     });
-    reservationItems.value = JSON.stringify(orders.map(o => ({ id: o.id, qty: o.qty })));
+
+    reservationItems.value = JSON.stringify(orders.filter(o => o.active !== false).map(o => ({ id: o.id, qty: o.qty })));
     orderTotal.textContent = `Total: ₱${total}`;
   }
 
@@ -183,11 +314,12 @@
       const id = parseInt(card.dataset.id);
       const name = card.dataset.name;
       const price = parseInt(card.dataset.price);
-      const existing = orders.find(o => o.id === id);
-      if (existing) {
-        existing.qty++;
+      const idx = findOrder(id);
+      if (idx > -1) {
+        orders[idx].qty++;
+        orders[idx].active = true;
       } else {
-        orders.push({ id, name, qty: 1, price });
+        orders.push({ id, name, qty: 1, price, active: true });
       }
       renderOrders();
     });
@@ -198,9 +330,12 @@
   closeOrdersBtn.onclick = () => menuModal.style.display = 'none';
 
   confirmOrdersBtn.onclick = () => {
-    if (!orders.length) return alert('No items selected');
+    const selected = orders.filter(o => o.active !== false);
+    if (!selected.length) return alert('No items selected');
     alert('Orders confirmed!');
     menuModal.style.display = 'none';
   };
+
+  renderOrders();
 </script>
 {% endblock %}
