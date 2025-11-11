@@ -18,23 +18,36 @@ ALLOWED_START_TIMES = [
 ]
 
 MENU_ITEMS = [
-    {"id": 1, "name": "Herb-Roasted Chicken & Veggies", "category": "Food", "price": 300, "img": "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=900&q=80"},
-    {"id": 2, "name": "Smoked Beef Brisket with Slaw", "category": "Food", "price": 320, "img": "https://images.unsplash.com/photo-1555992336-03a23c3bf2c8?auto=format&fit=crop&w=900&q=80"},
-    {"id": 3, "name": "Garlic Butter Shrimp Linguine", "category": "Food", "price": 280, "img": "https://images.unsplash.com/photo-1625944230921-9c1abcb2a5cb?auto=format&fit=crop&w=900&q=80"},
-    {"id": 4, "name": "Teriyaki Chicken Rice Bowl", "category": "Food", "price": 240, "img": "https://images.unsplash.com/photo-1562967914-608fb3f1f2fe?auto=format&fit=crop&w=900&q=80"},
-    {"id": 5, "name": "Crispy Pork Sisig Platter", "category": "Food", "price": 260, "img": "https://images.unsplash.com/photo-1617191511073-6e6b5f1d2c3d?auto=format&fit=crop&w=900&q=80"},
-    {"id": 6, "name": "BBQ Baby Back Ribs & Mash", "category": "Food", "price": 350, "img": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=900&q=80"},
-    {"id": 7, "name": "Baked Mac & Cheese Supreme", "category": "Food", "price": 200, "img": "https://images.unsplash.com/photo-1599785209796-9cfbfe2b1d4d?auto=format&fit=crop&w=900&q=80"},
-    {"id": 8, "name": "Margherita Wood-Fired Pizza", "category": "Food", "price": 330, "img": "https://images.unsplash.com/photo-1548365328-88f0e58d2b1e?auto=format&fit=crop&w=900&q=80"},
-    {"id": 9, "name": "Beef Tapa with Garlic Rice & Egg", "category": "Food", "price": 220, "img": "https://images.unsplash.com/photo-1611078489734-4d9fcb4a9f2c?auto=format&fit=crop&w=900&q=80"},
-    {"id": 10, "name": "Crispy Pata Filipino Style", "category": "Food", "price": 420, "img": "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=900&q=80"},
-    {"id": 11, "name": "Adobo Flakes Rice Bowl", "category": "Food", "price": 190, "img": "https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&w=900&q=80"},
-    {"id": 12, "name": "Creamy Mushroom Soup & Bread", "category": "Food", "price": 150, "img": "https://images.unsplash.com/photo-1603133872878-684f33d2e06e?auto=format&fit=crop&w=900&q=80"},
-    {"id": 13, "name": "Caramel Iced Macchiato", "category": "Drink", "price": 140, "img": "https://images.unsplash.com/photo-1558980664-10b2a3e9b6f6?auto=format&fit=crop&w=900&q=80"},
-    {"id": 14, "name": "Mango Tropical Shake", "category": "Drink", "price": 120, "img": "https://images.unsplash.com/photo-1563306406-2b7f53b2a2c3?auto=format&fit=crop&w=900&q=80"},
-    {"id": 15, "name": "Wintermelon Milk Tea", "category": "Drink", "price": 100, "img": "https://images.unsplash.com/photo-1551022370-5c522c4e4e0a?auto=format&fit=crop&w=900&q=80"},
-    {"id": 16, "name": "Iced Mocha Latte", "category": "Drink", "price": 150, "img": "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80"},
-    {"id": 17, "name": "Fresh Lemonade Splash", "category": "Drink", "price": 90, "img": "https://images.unsplash.com/photo-1505253216365-0a3d71e310da?auto=format&fit=crop&w=900&q=80"}
+    {"id": 1, "name": "Herb-Roasted Chicken & Veggies", "category": "Food", "price": 300},
+    {"id": 2, "name": "Smoked Beef Brisket with Slaw", "category": "Food", "price": 320},
+    {"id": 3, "name": "Garlic Butter Shrimp Linguine", "category": "Food", "price": 280},
+    {"id": 4, "name": "Teriyaki Chicken Rice Bowl", "category": "Food", "price": 240},
+    {"id": 5, "name": "Crispy Pork Sisig Platter", "category": "Food", "price": 260},
+    {"id": 6, "name": "BBQ Baby Back Ribs & Mash", "category": "Food", "price": 350},
+    {"id": 7, "name": "Baked Mac & Cheese Supreme", "category": "Food", "price": 200},
+    {"id": 8, "name": "Margherita Wood-Fired Pizza", "category": "Food", "price": 330},
+    {"id": 9, "name": "Beef Tapa with Garlic Rice & Egg", "category": "Food", "price": 220},
+    {"id": 10, "name": "Crispy Pata Filipino Style", "category": "Food", "price": 420},
+    {"id": 11, "name": "Adobo Flakes Rice Bowl", "category": "Food", "price": 190},
+    {"id": 12, "name": "Creamy Mushroom Soup & Bread", "category": "Food", "price": 150},
+    {"id": 13, "name": "Spicy Korean Fried Chicken", "category": "Food", "price": 290},
+    {"id": 14, "name": "Salmon Teriyaki with Salad", "category": "Food", "price": 360},
+    {"id": 15, "name": "Vegetarian Buddha Bowl", "category": "Food", "price": 210},
+
+    {"id": 16, "name": "Caramel Iced Macchiato", "category": "Drink", "price": 140},
+    {"id": 17, "name": "Mango Tropical Shake", "category": "Drink", "price": 120},
+    {"id": 18, "name": "Wintermelon Milk Tea", "category": "Drink", "price": 100},
+    {"id": 19, "name": "Iced Mocha Latte", "category": "Drink", "price": 150},
+    {"id": 20, "name": "Fresh Lemonade Splash", "category": "Drink", "price": 90},
+    {"id": 21, "name": "Classic Iced Tea", "category": "Drink", "price": 80},
+    {"id": 22, "name": "Bacardi Cocktail (Mockable)", "category": "Drink", "price": 180},
+    {"id": 23, "name": "Sparkling Water", "category": "Drink", "price": 70},
+
+    {"id": 24, "name": "Chocolate Lava Cake", "category": "Dessert", "price": 160},
+    {"id": 25, "name": "Classic Cheesecake Slice", "category": "Dessert", "price": 150},
+    {"id": 26, "name": "Halo-halo Sundae", "category": "Dessert", "price": 140},
+    {"id": 27, "name": "Leche Flan Caramel", "category": "Dessert", "price": 130},
+    {"id": 28, "name": "Fruit Tart", "category": "Dessert", "price": 120},
 ]
 
 def get_db():
@@ -61,7 +74,7 @@ def close_db(exception):
 def init_db():
     db = get_db()
     cursor = db.cursor()
-    
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -72,7 +85,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS reservations (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -84,7 +97,7 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
         )
     """)
-    
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -150,7 +163,15 @@ def register():
                 (username, email, number, pw_hash)
             )
             db.commit()
-            flash("Registration successful. You can now log in.", "success")
+
+            cursor.execute("SELECT id, username FROM users WHERE email=%s", (email,))
+            user = cursor.fetchone()
+            if user:
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+                flash(f"Welcome {user['username']}! Your account was created and you're now logged in.", "success")
+                return redirect(url_for("reservations"))
+            flash("Registration successful. Please log in.", "success")
             return redirect(url_for("login"))
         except Exception:
             db.rollback()
