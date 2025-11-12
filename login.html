@@ -107,7 +107,7 @@
   }
 
   {% if session.get('username') %}
-    window.location.href = "{{ url_for('reservations') }}";
+    window.location.href = '{{ url_for("reservations") }}';
   {% endif %}
 </script>
 {% endblock %}
