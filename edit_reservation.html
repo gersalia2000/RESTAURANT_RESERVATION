@@ -143,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="card">
           <h3>Your Upcoming</h3>
           <p>Reservations and orders will appear here after creation.</p>
+          <p style="font-size:13px;color:rgba(255,255,255,0.6);">To view your personal list, go to <a href="{{ url_for('my_reservations') }}">My Reservations</a>.</p>
         </div>
       </div>
     </div>
@@ -218,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      checkbox.checked = o.active !== false; // default true
+      checkbox.checked = o.active !== false; 
       checkbox.style.width = '16px';
       checkbox.style.height = '16px';
       checkbox.addEventListener('change', () => {
@@ -329,11 +330,28 @@ document.addEventListener('DOMContentLoaded', function(){
   closeMenuModal.onclick = () => menuModal.style.display = 'none';
   closeOrdersBtn.onclick = () => menuModal.style.display = 'none';
 
-  confirmOrdersBtn.onclick = () => {
+  confirmOrdersBtn.onclick = async () => {
     const selected = orders.filter(o => o.active !== false);
     if (!selected.length) return alert('No items selected');
-    alert('Orders confirmed!');
-    menuModal.style.display = 'none';
+    let total = 0;
+    selected.forEach(s => total += s.price * s.qty);
+
+    try {
+      const res = await fetch('{{ url_for("create_order") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: selected.map(s => ({ id: s.id, qty: s.qty })), total })
+      });
+      const payload = await res.json();
+      if (payload && payload.ok) {
+        alert('Orders confirmed and saved!');
+        menuModal.style.display = 'none';
+      } else {
+        alert('Could not save orders: ' + (payload && payload.error ? payload.error : 'unknown'));
+      }
+    } catch (err) {
+      alert('Error saving orders: ' + err);
+    }
   };
 
   renderOrders();
