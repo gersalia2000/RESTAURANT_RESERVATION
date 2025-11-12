@@ -107,9 +107,11 @@
       el.textContent = "👁️";
     }
   }
-
-  {% if session.get('registered') %}
-    window.location.href = "{{ url_for('login') }}";
-  {% endif %}
 </script>
+
+{% if session.get('registered') %}
+<script>
+  window.location.href = "{{ url_for('login') }}";
+</script>
+{% endif %}
 {% endblock %}
