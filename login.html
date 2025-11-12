@@ -105,9 +105,11 @@
       el.textContent = "👁️";
     }
   }
-
-  {% if session.get('username') %}
-    window.location.href = '{{ url_for("reservations") }}';
-  {% endif %}
 </script>
+
+{% if session.get('username') %}
+<script>
+  window.location.href = "{{ url_for('reservations') }}";
+</script>
+{% endif %}
 {% endblock %}
