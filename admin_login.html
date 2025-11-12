@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Admin Login - Plate & Chill{% endblock %}
+
+{% block content %}
+<main style="max-width:420px;margin:80px auto;">
+  <h2>Admin Login</h2>
+  <form method="POST" action="{{ url_for('admin_login') }}">
+    <input type="text" name="username" placeholder="admin username" required style="width:100%;padding:8px;margin:8px 0;border-radius:6px;border:none;">
+    <input type="password" name="password" placeholder="admin password" required style="width:100%;padding:8px;margin:8px 0;border-radius:6px;border:none;">
+    <button class="btn" type="submit">Login</button>
+  </form>
+</main>
+{% endblock %}

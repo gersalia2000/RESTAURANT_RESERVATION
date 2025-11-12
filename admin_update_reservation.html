@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Update Reservation - Plate & Chill{% endblock %}
+
+{% block content %}
+<style>
+  .card { background: rgba(0,0,0,0.55); padding:20px; border-radius:10px; color:#fff; max-width:600px; margin:auto; }
+  .muted { color: rgba(255,255,255,0.6); }
+  .btn { background:#b58a43;color:#fff;padding:8px 10px;border-radius:6px;border:none;cursor:pointer;margin-top:8px; }
+  .btn-cancel { background:red; }
+  label { display:block; margin-top:12px; font-weight:bold; }
+  input, select { width:100%; padding:6px; margin-top:4px; border-radius:6px; border:none; }
+  ul { margin:4px 0 0 16px; }
+</style>
+
+<main style="margin:40px auto;padding:20px;">
+  <div class="card">
+    <h2>Update Reservation #{{ reservation.id }}</h2>
+    <form method="POST" action="{{ url_for('admin_update_reservation') }}">
+      
+      <input type="hidden" name="reservation_id" value="{{ reservation.id }}">
+
+      <label for="date">Date</label>
+      <input type="date" name="date" id="date" value="{{ reservation.time.strftime('%Y-%m-%d') }}" required>
+
+      <label for="time">Time</label>
+      <select name="time" id="time" required>
+        {% for t in times %}
+          <option value="{{ t }}" {% if t.split('-')[0].strip() == reservation.time.strftime('%I:%M%p').lower() %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="people">Number of People</label>
+      <input type="number" name="people" id="people" min="1" value="{{ reservation.people }}" required>
+
+      <label>Menu Items</label>
+      {% for item in menu_items %}
+        <div>
+          <input type="number" min="0" name="items[{{ item.id }}]" value="{% for it in reservation.items_parsed %}{% if it.id == item.id %}{{ it.qty }}{% endif %}{% endfor %}">
+          <strong>{{ item.name }}</strong> (₱{{ item.price }})
+        </div>
+      {% endfor %}
+
+      <button type="submit" class="btn">Update Reservation</button>
+      <a href="{{ url_for('my_reservations') }}" class="btn btn-cancel">Cancel / Back</a>
+    </form>
+  </div>
+</main>
+{% endblock %}

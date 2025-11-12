@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}My Reservations - Plate & Chill{% endblock %}
+
+{% block content %}
+<style>
+  .card { background: rgba(0,0,0,0.55); padding:20px; border-radius:10px; color:#fff; max-width:900px; margin:auto; margin-bottom:20px; }
+  .btn { background:#b58a43;color:#fff;padding:6px 10px;border-radius:6px;border:none;cursor:pointer;margin-top:6px; }
+  .btn-cancel { background:red; }
+  table { width:100%; border-collapse:collapse; color:#fff; }
+  th, td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.06); text-align:left; }
+  .small { font-size:13px; color:rgba(255,255,255,0.7); }
+  input, select { padding:6px;border-radius:6px;border:none;margin-top:4px; }
+</style>
+
+<main style="max-width:1000px;margin:40px auto;">
+  <h2>My Reservations</h2>
+
+  {% if not reservations %}
+    <div class="small">You have no reservations yet.</div>
+  {% else %}
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Time</th>
+            <th>People</th>
+            <th>Status</th>
+            <th>Items</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in reservations %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.time }}</td>
+            <td>{{ r.people }}</td>
+            <td>{{ r.status or 'pending' }}</td>
+            <td class="small">
+              {% if r.items_parsed %}
+                {% for it in r.items_parsed %}{{ it.id }}×{{ it.qty }} {% endfor %}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <!-- Update reservation -->
+              <form method="POST" action="{{ url_for('update_reservation') }}" style="display:inline-block;">
+                <input type="hidden" name="reservation_id" value="{{ r.id }}">
+                
+                <input type="date" name="date" value="{{ r.time.strftime('%Y-%m-%d') }}" required style="width:120px;">
+                <select name="time" required>
+                  {% for t in times %}
+                    <option value="{{ t }}" {% if t.split('-')[0].strip() == r.time.strftime('%I:%M%p').lower() %}selected{% endif %}>{{ t }}</option>
+                  {% endfor %}
+                </select>
+
+                <input type="number" name="people" min="1" value="{{ r.people }}" style="width:60px;">
+
+                <button class="btn" type="submit">Update</button>
+              </form>
+
+              <!-- Delete reservation -->
+              <form method="POST" action="{{ url_for('delete_reservation') }}" style="display:inline-block;margin-left:6px;">
+                <input type="hidden" name="reservation_id" value="{{ r.id }}">
+                <button class="btn btn-cancel" type="submit" onclick="return confirm('Delete reservation #{{ r.id }}?')">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  {% if not orders %}
+    <div class="small">You have no orders yet.</div>
+  {% else %}
+    <div class="card">
+      <h3>My Orders</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Reservation</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for o in orders %}
+          <tr>
+            <td>{{ o.id }}</td>
+            <td>{{ o.reservation_id or '—' }}</td>
+            <td class="small">
+              {% if o.items_parsed %}
+                {% for it in o.items_parsed %}{{ it.id }}×{{ it.qty }} {% endfor %}
+              {% else %}—{% endif %}
+            </td>
+            <td>₱{{ o.total }}</td>
+            <td>{{ o.created_at }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</main>
+{% endblock %}
