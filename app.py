@@ -51,6 +51,8 @@ MENU_ITEMS = [
     {"id": 28, "name": "Fruit Tart", "category": "Dessert", "price": 120},
 ]
 
+MENU_MAP = {int(item["id"]): item for item in MENU_ITEMS}
+
 def get_db():
     if "db" not in g:
         g.db = pymysql.connect(
@@ -277,12 +279,62 @@ def my_reservations():
     reservations = cursor.fetchall() or []
     cursor.execute("SELECT * FROM orders WHERE user_id=%s ORDER BY created_at DESC",(session["user_id"],))
     orders=cursor.fetchall() or []
+
     for r in reservations:
-        try: r["items_parsed"]=json.loads(r["items"]) if r.get("items") else []
-        except: r["items_parsed"]=[]
+        try:
+            parsed = json.loads(r["items"]) if r.get("items") else []
+        except:
+            parsed = []
+        items_enhanced = []
+        for it in parsed:
+            try:
+                item_id = int(it.get("id"))
+            except Exception:
+                item_id = None
+            qty = int(it.get("qty", 1)) if it.get("qty") is not None else 1
+            entry = {"id": item_id, "qty": qty}
+            if item_id and item_id in MENU_MAP:
+                entry["name"] = MENU_MAP[item_id]["name"]
+                entry["price"] = MENU_MAP[item_id]["price"]
+            else:
+                if it.get("name"): entry["name"] = it.get("name")
+                if it.get("price"): entry["price"] = it.get("price")
+            items_enhanced.append(entry)
+        r["items_parsed"] = items_enhanced
+
     for o in orders:
-        try: o["items_parsed"]=json.loads(o["items"]) if o.get("items") else []
-        except: o["items_parsed"]=[]
+        try:
+            parsed = json.loads(o["items"]) if o.get("items") else []
+        except:
+            parsed = []
+        items_enhanced = []
+        for it in parsed:
+            try:
+                item_id = int(it.get("id"))
+            except Exception:
+                item_id = None
+            qty = int(it.get("qty", 1)) if it.get("qty") is not None else 1
+            entry = {"id": item_id, "qty": qty}
+            if item_id and item_id in MENU_MAP:
+                entry["name"] = MENU_MAP[item_id]["name"]
+                entry["price"] = MENU_MAP[item_id]["price"]
+            else:
+                if it.get("name"): entry["name"] = it.get("name")
+                if it.get("price"): entry["price"] = it.get("price")
+            items_enhanced.append(entry)
+        o["items_parsed"] = items_enhanced
+
+        if o.get("reservation_id"):
+            try:
+                cursor.execute("SELECT status, time, people FROM reservations WHERE id=%s", (o["reservation_id"],))
+                rr = cursor.fetchone()
+                if rr:
+                    o["reservation_status"] = rr.get("status")
+                    o["reservation_time"] = rr.get("time")
+                    o["reservation_people"] = rr.get("people")
+            except:
+                o["reservation_status"] = None
+
     return render_template("my_reservations.html", reservations=reservations, orders=orders)
 
 @app.route("/admin_login", methods=["GET","POST"])
@@ -406,6 +458,100 @@ def admin_delete_reservation():
         db.rollback()
         flash(f"Could not delete reservation: {e}", "error")
     return redirect(url_for("admin"))
+
+@app.route("/confirm_reservation", methods=["POST"])
+def confirm_reservation():
+    reservation_id = request.form.get("reservation_id")
+    if not reservation_id:
+        flash("Missing reservation id.", "error")
+        return redirect(url_for("my_reservations") if not session.get("is_admin") else url_for("admin"))
+
+    if not session.get("user_id") and not session.get("is_admin"):
+        flash("Please login to confirm reservations.", "warning")
+        return redirect(url_for("login"))
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT * FROM reservations WHERE id=%s", (reservation_id,))
+        res = cursor.fetchone()
+        if not res:
+            flash("Reservation not found.", "error")
+            return redirect(url_for("my_reservations"))
+
+        if not session.get("is_admin") and res.get("user_id") != session.get("user_id"):
+            flash("You are not allowed to confirm this reservation.", "error")
+            return redirect(url_for("my_reservations"))
+
+        try:
+            items_list = json.loads(res.get("items")) if res.get("items") else []
+        except:
+            items_list = []
+
+        total = 0.0
+        enhanced_items = []
+        for it in items_list:
+            item_id = None
+            try:
+                item_id = int(it.get("id"))
+            except Exception:
+                item_id = None
+            qty = int(it.get("qty", 1)) if it.get("qty") is not None else 1
+            price = None
+            name = None
+            if item_id and item_id in MENU_MAP:
+                price = MENU_MAP[item_id]["price"]
+                name = MENU_MAP[item_id]["name"]
+            else:
+                price = float(it.get("price")) if it.get("price") else 0.0
+                name = it.get("name") if it.get("name") else str(item_id or "Item")
+            subtotal = float(price) * qty
+            total += subtotal
+            enhanced_items.append({"id": item_id, "qty": qty, "name": name, "price": price})
+
+        user_id = res.get("user_id") or session.get("user_id")
+        cursor.execute("INSERT INTO orders (reservation_id,user_id,items,total) VALUES (%s,%s,%s,%s)",
+                       (reservation_id, user_id, json.dumps(enhanced_items), float(total)))
+        cursor.execute("UPDATE reservations SET status=%s WHERE id=%s", ("reserved", reservation_id))
+        db.commit()
+        flash(f"Reservation #{reservation_id} confirmed and order created (Total: ₱{total}).", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not confirm reservation: {e}", "error")
+
+    if session.get("is_admin"):
+        return redirect(url_for("admin"))
+    return redirect(url_for("my_reservations"))
+
+@app.route("/delete_order", methods=["POST"])
+def delete_order():
+    order_id = request.form.get("order_id")
+    if not order_id:
+        flash("Missing order id.", "error")
+        return redirect(url_for("my_reservations") if not session.get("is_admin") else url_for("admin"))
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT user_id FROM orders WHERE id=%s", (order_id,))
+        row = cursor.fetchone()
+        if not row:
+            flash("Order not found.", "error")
+            return redirect(url_for("my_reservations"))
+        order_user_id = row.get("user_id")
+        if not session.get("is_admin") and session.get("user_id") != order_user_id:
+            flash("You are not allowed to delete this order.", "error")
+            return redirect(url_for("my_reservations"))
+        cursor.execute("DELETE FROM orders WHERE id=%s", (order_id,))
+        db.commit()
+        flash(f"Order #{order_id} deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not delete order: {e}", "error")
+
+    if session.get("is_admin"):
+        return redirect(url_for("admin"))
+    return redirect(url_for("my_reservations"))
 
 if __name__=="__main__":
     app.run(debug=True)
