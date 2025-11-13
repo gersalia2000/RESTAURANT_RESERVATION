@@ -355,5 +355,21 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 
   renderOrders();
+
+
+  {% if not session.get('username') %}
+  openMenuBtn.onclick = function(){
+    alert('Please register or login first to select items and place an order.');
+    document.querySelector('.card')?.scrollIntoView({ behavior: 'smooth' });
+  };
+  {% endif %}
+
+  {% if session.get('username') %}
+  document.addEventListener('DOMContentLoaded', function(){
+    const form = document.getElementById('resForm');
+    if(form) form.scrollIntoView({ behavior: 'smooth' });
+  });
+  {% endif %}
+
 </script>
 {% endblock %}
