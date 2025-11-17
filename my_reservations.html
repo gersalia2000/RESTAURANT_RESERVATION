@@ -17,6 +17,33 @@
   .item-name { flex:1; }
   .item-right { white-space:nowrap; }
   .meta { color: rgba(255,255,255,0.6); font-size:13px; margin-top:6px; }
+
+  #updateModal {
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.5);
+    z-index:2000;
+  }
+  #updateModal .modal-card {
+    background:#222;
+    width:420px;
+    margin:120px auto;
+    padding:22px;
+    border-radius:12px;
+    color:white;
+    box-shadow:0 0 12px rgba(0,0,0,0.6);
+  }
+  #updateModal input, #updateModal select {
+    width:100%;
+    padding:8px;
+    border-radius:6px;
+    border:none;
+    margin-top:4px;
+    background:#333;
+    color:white;
+  }
 </style>
 
 <div class="top-actions" style="max-width:1000px;">
@@ -36,7 +63,7 @@
             <th style="width:110px">Persons</th>
             <th style="width:120px">Status</th>
             <th>Items</th>
-            <th style="width:170px">Actions</th>
+            <th style="width:210px">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -54,13 +81,8 @@
               {% endif %}
             </td>
 
-            <td>
-              {{ r.people }}
-            </td>
-
-            <td>
-              {{ r.status or 'pending' }}
-            </td>
+            <td>{{ r.people }}</td>
+            <td>{{ r.status or 'pending' }}</td>
 
             <td>
               {% if r.items_parsed %}
@@ -71,11 +93,7 @@
                       <div class="small">× {{ it.qty }}</div>
                     </div>
                     <div class="item-right small">
-                      {% if it.price is defined %}
-                        ₱{{ (it.price * it.qty)|round(2) }}
-                      {% else %}
-                        —
-                      {% endif %}
+                      {% if it.price %} ₱{{ (it.price * it.qty)|round(2) }} {% else %} — {% endif %}
                     </div>
                   </div>
                 {% endfor %}
@@ -87,15 +105,27 @@
 
             <td>
               <div style="display:flex; gap:8px;">
-                <form method="POST" action="{{ url_for('confirm_reservation') }}" style="display:inline-block;">
+
+                <button class="btn btn-small"
+                  onclick='openUpdateModal({
+                    id: "{{ r.id }}",
+                    people: "{{ r.people }}",
+                    date: "{{ r.time.strftime("%Y-%m-%d") if r.time else "" }}",
+                    time: "{{ r.time.strftime("%H:%M") if r.time else "" }}"
+                  })'>
+                  Update
+                </button>
+
+                <form method="POST" action="{{ url_for('confirm_reservation') }}#orders">
                   <input type="hidden" name="reservation_id" value="{{ r.id }}">
-                  <button class="btn btn-confirm" type="submit" onclick="return confirm('Confirm reservation #{{ r.id }}?')">Confirm</button>
+                  <button class="btn btn-confirm" type="submit">Confirm</button>
                 </form>
 
-                <form method="POST" action="{{ url_for('delete_reservation') }}" style="display:inline-block;">
+                <form method="POST" action="{{ url_for('delete_reservation') }}">
                   <input type="hidden" name="reservation_id" value="{{ r.id }}">
-                  <button class="btn btn-cancel" type="submit" onclick="return confirm('Delete reservation #{{ r.id }}?')">Delete</button>
+                  <button class="btn btn-cancel" type="submit">Delete</button>
                 </form>
+
               </div>
             </td>
           </tr>
@@ -104,6 +134,8 @@
       </table>
     {% endif %}
   </div>
+
+  <a id="orders"></a>
 
   <div class="card" style="margin-top:18px;">
     <h3 style="margin-top:0;">My Orders</h3>
@@ -123,73 +155,102 @@
           </tr>
         </thead>
         <tbody>
-          {% for o in orders %}
-            <tr>
-              <td>
-                {% if o.reservation_time %}
-                  {% if o.reservation_time is string %}
-                    {{ o.reservation_time }}
-                  {% else %}
-                    {{ o.reservation_time.strftime('%Y-%m-%d %I:%M %p') }} — {{ o.reservation_time.strftime('%A') }}
-                  {% endif %}
+        {% for o in orders %}
+          <tr>
+            <td>
+              {% if o.reservation_time %}
+                {% if o.reservation_time is string %}
+                  {{ o.reservation_time }}
                 {% else %}
-                  —
+                  {{ o.reservation_time.strftime('%Y-%m-%d %I:%M %p') }} — {{ o.reservation_time.strftime('%A') }}
                 {% endif %}
-              </td>
+              {% else %} — {% endif %}
+            </td>
 
-              <td class="small">
-                {% if o.items_parsed %}
-                  {% for it in o.items_parsed %}
-                    <div class="item-line">
-                      <div style="flex:1;">
-                        <strong>{{ it.name if it.name is defined else it.id }}</strong>
-                        <div class="small">× {{ it.qty }}</div>
-                      </div>
-                      <div class="item-right small">
-                        {% if it.price is defined %} ₱{{ (it.price * it.qty)|round(2) }} {% else %} — {% endif %}
-                      </div>
+            <td class="small">
+              {% if o.items_parsed %}
+                {% for it in o.items_parsed %}
+                  <div class="item-line">
+                    <div style="flex:1;">
+                      <strong>{{ it.name if it.name is defined else it.id }}</strong>
+                      <div class="small">× {{ it.qty }}</div>
                     </div>
-                  {% endfor %}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
+                    <div class="item-right small">
+                      ₱{{ (it.price * it.qty)|round(2) if it.price else "—" }}
+                    </div>
+                  </div>
+                {% endfor %}
+              {% else %} — {% endif %}
+            </td>
 
-              <td>₱{{ (o.total or 0)|round(2) }}</td>
+            <td>₱{{ (o.total or 0)|round(2) }}</td>
 
-              <td>
-                {% if o.created_at %}
-                  {{ o.created_at }}
-                  {% if o.created_at is not string %}
-                    — {{ o.created_at.strftime('%A') }}
-                  {% endif %}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
+            <td>
+              {% if o.created_at %}
+                {{ o.created_at }}
+                {% if o.created_at is not string %} — {{ o.created_at.strftime('%A') }} {% endif %}
+              {% else %} — {% endif %}
+            </td>
 
-              <td>
-                {% if o.username is defined and o.username %}
-                  {{ o.username }}
-                {% else %}
-                  {{ session.get('username') }}
-                {% endif %}
-              </td>
+            <td>{{ o.username or session.get('username') }}</td>
 
-              <td>{{ o.reservation_status or 'reserved' }}</td>
+            <td>{{ o.reservation_status or 'reserved' }}</td>
 
-              <td>
-                <form method="POST" action="{{ url_for('delete_order') }}">
-                  <input type="hidden" name="order_id" value="{{ o.id }}">
-                  <button class="btn btn-cancel" type="submit" onclick="return confirm('Delete order #{{ o.id }}?')">Delete</button>
-                </form>
-              </td>
-            </tr>
-          {% endfor %}
+            <td>
+              <form method="POST" action="{{ url_for('delete_order') }}">
+                <input type="hidden" name="order_id" value="{{ o.id }}">
+                <button class="btn btn-cancel" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
         </tbody>
       </table>
     {% endif %}
   </div>
 </main>
+
+<div id="updateModal">
+  <div class="modal-card">
+    <h3 style="margin-top:0;">Update Reservation</h3>
+
+    <form action="{{ url_for('update_reservation') }}" method="POST">
+      <input type="hidden" name="reservation_id" id="upd_id">
+
+      <label>Persons</label>
+      <select name="people" id="upd_people" required>
+        {% for i in range(1,11) %}
+          <option value="{{ i }}">{{ i }} person{{ 's' if i>1 else '' }}</option>
+        {% endfor %}
+      </select>
+
+      <label style="margin-top:12px;">Date</label>
+      <input type="date" name="date" id="upd_date" required>
+
+      <label style="margin-top:12px;">Time</label>
+      <input type="time" name="time" id="upd_time" required>
+
+      <div style="margin-top:18px; display:flex; gap:12px;">
+        <button class="btn" type="submit">Save</button>
+        <button class="btn" type="button" onclick="closeUpdateModal()" style="background:#777;">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openUpdateModal(data) {
+  document.getElementById("updateModal").style.display = "block";
+
+  document.getElementById("upd_id").value = data.id;
+  document.getElementById("upd_people").value = data.people;
+  document.getElementById("upd_date").value = data.date;
+  document.getElementById("upd_time").value = data.time;
+}
+
+function closeUpdateModal() {
+  document.getElementById("updateModal").style.display = "none";
+}
+</script>
 
 {% endblock %}
