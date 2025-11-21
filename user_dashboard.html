@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>User Dashboard — Plate & Chill</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+  <style>
+    :root{
+      --bg: #0f1724; --panel: rgba(255,255,255,0.04);
+      --accent: #ffd369; --muted: rgba(255,255,255,0.8);
+      --green: #2ecc71; --red: #e74c3c; --yellow:#f39c12;
+    }
+    body{
+      margin:0; font-family: Inter, system-ui, Arial; color:#fff;
+      background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.65)),
+                  url('{{ url_for("static", filename="images/home_bg.png") }}') center/cover fixed no-repeat;
+    }
+    .container{ max-width:1200px; margin:28px auto; padding:18px; }
+    header{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    header h1{ margin:0; font-size:20px; }
+
+    /* FLOOR MAP */
+    .floor { position:relative; height:auto; margin-bottom:30px; display:flex; flex-wrap:wrap; justify-content:center; gap:20px; }
+    .table { border-radius:12px; font-weight:800; min-width:120px; min-height:70px; display:flex; flex-direction:column; justify-content:center; align-items:center; cursor:pointer; transition:.15s; padding:8px; text-align:center; }
+    .table.available{ background:var(--green); color:#042612; }
+    .table.reserved{ background:var(--red); color:#fff; }
+    .table.selected { outline:4px solid rgba(255,255,255,0.3); transform:scale(1.05); }
+
+    .panel { background:rgba(0,0,0,0.6); padding:14px; border-radius:10px; margin-top:20px; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th,td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; vertical-align:top; }
+    button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; font-weight:700; }
+
+    .btn-pay { background:var(--accent); color:#000; }
+    .btn-delete { background:#e74c3c; color:#fff; }
+    .btn-update { background:#3498db; color:#fff; }
+
+    .small-btn{ background:var(--accent); color:#000; padding:6px 8px; border-radius:6px; cursor:pointer; font-weight:700; }
+    .btn{ background:var(--accent); color:#000; padding:10px 14px; border-radius:8px; font-weight:800; }
+
+    .menu-list{ display:grid; gap:8px; max-height:360px; overflow:auto; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    .menu-card{ display:flex; gap:8px; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; align-items:center; }
+    .menu-card img{ width:70px; height:70px; object-fit:cover; border-radius:8px; }
+
+    /* MODALS & POPUPS (centered) */
+    /* increased z-index and ensure pointer events are enabled */
+    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:99999; padding:16px; pointer-events: auto; }
+    .modal.open{ display:flex; }
+    .modal-card{ width:520px; max-width:96%; background:#fff; color:#000; padding:18px; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.4); z-index:100000; pointer-events: auto; }
+    .modal-card h3{ margin-top:0; }
+    .gcash-qr{ max-width:100%; height:auto; border-radius:8px; display:block; margin:8px 0; }
+
+    #successPopup { position:fixed; inset:0; display:none; justify-content:center; align-items:center; background:rgba(0,0,0,.6); z-index:100001; pointer-events:auto; }
+    #successPopup .box { background:#fff; color:#000; padding:20px 30px; font-size:18px; border-radius:10px; font-weight:700; text-align:center; }
+    #successPopup .ok-btn { margin-top:12px; padding:6px 12px; border:none; border-radius:6px; cursor:pointer; background:var(--accent); color:#000; font-weight:700; }
+
+    .order-list { font-size:13px; margin:6px 0; padding-left:12px; }
+    .order-toggle { cursor:pointer; color:var(--accent); text-decoration:underline; background:transparent; border:none; padding:0; }
+
+    /* ensure any element inside modal is clickable even if parent overlays exist */
+    .modal *, #successPopup * { pointer-events: auto; }
+
+    @media(max-width:980px){ .menu-list{ grid-template-columns: 1fr; } .table { min-width:100px; } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Welcome, {{ session.username }}</h1>
+  <a href="{{ url_for('logout') }}" class="small-btn" type="button">Logout</a>
+</header>
+
+<!-- FLOOR MAP -->
+<div class="panel floor" id="floorMap">
+  {% for t in tables %}
+    <div class="table {% if t.status=='available' %}available{% else %}reserved{% endif %}" data-id="{{ t.id }}" data-number="{{ t.table_number }}" data-capacity="{{ t.capacity }}" role="button" tabindex="0">
+      <div style="font-size:14px">#{{ t.table_number }}</div>
+      <div style="font-size:18px; margin-top:6px;">{{ t.capacity }}p</div>
+      <div style="font-size:12px; opacity:.9; margin-top:6px;">{% if t.status=='available' %}Available{% else %}Reserved{% endif %}</div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- BOOKING PANEL -->
+<div class="panel" id="bookingPanel">
+  <h3>Booking</h3>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <input type="date" id="res_date">
+    <select id="res_time">{% for t in times %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select>
+    <input type="number" id="res_people" value="1" min="1" style="width:90px;">
+    <div style="margin-left:auto;">Table: <strong id="selectedTable">None</strong></div>
+  </div>
+
+  <h4 style="margin-top:15px;">Selected Items</h4>
+  <div style="max-height:140px; overflow:auto; background:rgba(255,255,255,0.03); padding:8px; border-radius:8px;">
+    <ul id="selectedList" style="list-style:none; padding:0; margin:0;"></ul>
+  </div>
+
+  <div style="margin-top:10px;">Total: ₱<span id="totalAmount">0.00</span></div>
+
+  <div style="margin-top:15px;">
+    <button id="bookBtn" class="btn" type="button" disabled>Book now</button>
+  </div>
+</div>
+
+<!-- MENU PANEL -->
+<div class="panel">
+  <h3>Menu</h3>
+  <div class="menu-list" id="menuList">
+    {% for m in drinks %}
+      <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+        <img src="{{ url_for('static', filename='images/drinks/' ~ m.image) }}" alt="{{ m.name }}">
+        <div style="flex:1">
+          <h4 style="margin:0;">{{ m.name }}</h4>
+          <p style="margin:4px 0 0 0;">₱{{ m.price }} — Drink</p>
+        </div>
+        <button class="small-btn add-item" type="button">Add</button>
+      </div>
+    {% endfor %}
+    {% for m in main_foods %}
+      <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+        <img src="{{ url_for('static', filename='images/main/' ~ m.image) }}" alt="{{ m.name }}">
+        <div style="flex:1">
+          <h4 style="margin:0;">{{ m.name }}</h4>
+          <p style="margin:4px 0 0 0;">₱{{ m.price }} — Main</p>
+        </div>
+        <button class="small-btn add-item" type="button">Add</button>
+      </div>
+    {% endfor %}
+    {% for m in desserts %}
+      <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+        <img src="{{ url_for('static', filename='images/desserts/' ~ m.image) }}" alt="{{ m.name }}">
+        <div style="flex:1">
+          <h4 style="margin:0;">{{ m.name }}</h4>
+          <p style="margin:4px 0 0 0;">₱{{ m.price }} — Dessert</p>
+        </div>
+        <button class="small-btn add-item" type="button">Add</button>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- RESERVATIONS PANEL -->
+<div class="panel">
+  <h3>Your Reservations</h3>
+  <table id="reservationsTable">
+    <thead>
+      <tr>
+        <th>#</th><th>Name</th><th>Time</th><th>Table</th><th>People</th><th>Status</th><th>Payment</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reservations %}
+      <tr data-reservation='{{ r|tojson }}'>
+        <td>{{ r.id }}</td>
+        <td>{{ r.name or session.username }}</td>
+        <td>{{ r.time }}</td>
+        <td>{{ r.table_id or 'N/A' }}</td>
+        <td>{{ r.people }}</td>
+        <td class="res-status">{{ r.status }}</td>
+        <td class="res-payment">
+          {% if r.payment_status == 'paid' %}
+            <strong style="color:var(--green)">Paid</strong>
+          {% else %}
+            <strong style="color:var(--yellow)">{{ r.payment_method or 'none' }}</strong>
+            <div><button class="btn-pay pay-now" data-id="{{ r.id }}" type="button">Pay</button></div>
+          {% endif %}
+        </td>
+        <td>
+          {% set items = r.get('items', []) %}
+          {% if items|length %}
+            <button class="order-toggle" data-id="{{ r.id }}" type="button">Show order</button>
+            <div id="order-{{ r.id }}" class="order-list" style="display:none;">
+              <ul style="margin:4px 0 0 12px; padding:0;">
+                {% for it in items %}
+                  <li>{{ it.name }} x{{ it.qty }} — ₱{{ it.price }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          <button class="btn-update update-res" type="button">Update</button>
+          <form method="POST" action="{{ url_for('delete_reservation') }}" style="display:inline;">
+            <input type="hidden" name="reservation_id" value="{{ r.id }}">
+            <button class="btn-delete" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="panel">
+  <h3>Your Orders</h3>
+  <table id="ordersTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Time</th>
+        <th>Items</th>
+        <th>Total</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Filled dynamically via JS -->
+    </tbody>
+  </table>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div id="paymentModal" class="modal" aria-hidden="true">
+  <div class="modal-card">
+    <h3>Choose Payment Method</h3>
+    <div id="paymentOptions" style="display:flex; gap:8px; margin-top:8px;">
+      <button id="modalCash" class="small-btn" type="button">Cash</button>
+      <button id="modalGcash" class="small-btn" type="button">GCash</button>
+      <button id="modalCard" class="small-btn" type="button">Card</button>
+    </div>
+    <div id="paymentContent" style="margin-top:12px;"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+      <button id="paymentCancel" class="small-btn" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS POPUP -->
+<div id="successPopup">
+  <div class="box">
+    <div id="successMessage">Payment Successful</div>
+    <button class="ok-btn" type="button">OK</button>
+  </div>
+</div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function(){
+    let selectedItems=[], selectedTableId=null, payReservationId=null;
+
+    function renderSelectedItems(){
+        const list=$("#selectedList"); list.empty(); let total=0;
+        if(selectedItems.length===0){ list.append("<li style='opacity:.6'>No items selected</li>"); $("#totalAmount").text('0.00'); checkBookBtn(); return; }
+        selectedItems.forEach((it,idx)=>{
+            list.append(`<li style="display:flex; justify-content:space-between;">
+                <div>${it.name} x${it.qty} — ₱${(it.price*it.qty).toFixed(2)}</div>
+                <div>
+                    <button class="minus" data-idx="${idx}" type="button">-</button>
+                    <button class="plus" data-idx="${idx}" type="button">+</button>
+                    <button class="remove" data-idx="${idx}" type="button">Remove</button>
+                </div>
+            </li>`); total+=it.price*it.qty;
+        });
+        $("#totalAmount").text(total.toFixed(2));
+        checkBookBtn();
+    }
+
+    function checkBookBtn(){ $("#bookBtn").prop("disabled",!(selectedItems.length && selectedTableId)); }
+    function showSuccess(msg){ $("#successMessage").text(msg); $("#successPopup").fadeIn(200); setTimeout(()=>$("#successPopup").fadeOut(200),1800); }
+
+    // delegated click so newly-added elements work as well
+    $(document).on('click', ".table.available", function(){
+        $(".table").removeClass("selected"); $(this).addClass("selected");
+        selectedTableId=$(this).data("id");
+        $("#selectedTable").text(`#${$(this).data("number")} (${$(this).data("capacity")}p)`);
+        checkBookBtn();
+    });
+
+    $(".menu-list").on("click",".add-item",function(){
+        const card=$(this).closest(".menu-card"), id=card.data("id"), name=card.data("name"), price=parseFloat(card.data("price"));
+        const existing=selectedItems.find(x=>String(x.id)===String(id)); if(existing) existing.qty++; else selectedItems.push({id,name,price,qty:1});
+        renderSelectedItems();
+    });
+
+    $("#selectedList").on("click",".minus,.plus,.remove",function(){
+        const idx=$(this).data("idx");
+        if($(this).hasClass("minus") && selectedItems[idx].qty>1) selectedItems[idx].qty--;
+        else if($(this).hasClass("plus")) selectedItems[idx].qty++;
+        else if($(this).hasClass("remove")) selectedItems.splice(idx,1);
+        renderSelectedItems();
+    });
+
+function convertTo24Hour(timeStr) {
+    // Expected format: "am-10:00am" or "pm-07:00pm"
+    try{
+        let parts = timeStr.split('-'); // ["am", "10:00am"]
+        let t = parts[1]; // "10:00am"
+        let hours = parseInt(t.split(':')[0]);
+        let minutes = t.split(':')[1].slice(0,2); // remove am/pm
+        let ampm = t.slice(-2).toLowerCase();
+
+        if(ampm === "pm" && hours !== 12) hours += 12;
+        if(ampm === "am" && hours === 12) hours = 0;
+
+        return `${hours.toString().padStart(2,'0')}:${minutes}`;
+    }catch(e){ return timeStr; }
+}
+
+function loadReservations(){
+    $.getJSON("/get_reservations", function(response){
+        const tbody = $("#reservationsTable tbody");
+        tbody.empty();
+        if(response.success && response.reservations && response.reservations.length){
+            response.reservations.forEach(r => addReservationRow(r));
+        } else {
+            tbody.append("<tr><td colspan='8' style='text-align:center; opacity:.6'>No reservations yet</td></tr>");
+        }
+    });
+}
+
+$("#bookBtn").click(function(){
+    const date = $("#res_date").val(),
+          timeRaw = $("#res_time").val(),
+          people = $("#res_people").val();
+
+    if(!date || !timeRaw || !people) {
+        alert("Fill date/time/people");
+        return;
+    }
+
+    const time = convertTo24Hour(timeRaw);
+
+    const payload = {
+        table_id: selectedTableId,
+        date,
+        time,
+        people,
+        items: selectedItems
+    };
+
+    $.ajax({
+        url: "{{ url_for('book_reservation') }}",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(payload),
+        success: function(response){
+            if(response.success){
+                showSuccess("Reservation Created!");
+                // always reload the page to reflect new reservation and orders
+                setTimeout(function(){ location.reload(); }, 500);
+            } else {
+                alert("Reservation failed: " + response.error);
+            }
+        },
+        error: function(xhr){
+            console.error("AJAX failed:", xhr.responseText);
+            alert("Reservation failed. Check console.");
+        }
+    });
+});
+
+// delegate dynamic buttons
+$(document).on('click', '.order-toggle', function(){ const id=$(this).data('id'); $("#order-"+id).toggle(); });
+$(document).on('click', '.pay-now', function(){ payReservationId=$(this).data('id'); $("#paymentModal").fadeIn(200); $("#paymentContent").empty(); });
+$(document).on('click', '#paymentCancel', function(){ $("#paymentModal").fadeOut(200); payReservationId=null; });
+
+$(document).on('click', '#modalCash', function(){
+    $("#paymentContent").html(`<p style="font-weight:700;">Pay at counter</p>
+        <button id="cashOk" class="btn" type="button">OK</button><button id="cashCancelInner" class="btn" type="button">Cancel</button>`);
+    // ensure we don't bind multiple handlers
+    $(document).off('click', '#cashOk').on('click', '#cashOk', function(){
+        $.post("{{ url_for('submit_payment') }}",{reservation_id:payReservationId,payment_method:'cash'},function(){
+            updateReservationRow(payReservationId,'Paid','Cash'); $("#paymentModal").fadeOut(200); showSuccess("Pay at counter");
+        });
+    });
+    $(document).off('click', '#cashCancelInner').on('click', '#cashCancelInner', ()=>$("#paymentContent").empty());
+});
+
+// hide success popup
+$(document).on('click', "#successPopup .ok-btn", function(){ $("#successPopup").fadeOut(200); });
+
+function updateReservationRow(id,status,method){
+    const row=$("#reservationsTable tbody tr").filter(function(){
+        try{ const data = $(this).data("reservation"); return data && data.id==id; }catch(e){ return false; }
+    });
+    row.find(".res-status").text(status);
+    row.find(".res-payment").html(`<strong style="color:${status==='Paid'?'var(--green)':'var(--yellow)'}">${method}</strong>`);
+    if(status==='Paid') row.addClass("reserved");
+}
+
+renderSelectedItems();
+loadReservations();
+});
+
+// addReservationRow function (keeps working same as before)
+function addReservationRow(res){
+    // normalize fields
+    const reservation = Object.assign({id:res.id, time:res.time || res.date || '', table_id:res.table_id||'N/A', people:res.people||1, status:res.status||'Pending', payment_method:res.payment_method||'none', items:res.items||[]}, res);
+
+    let itemsHtml = "—";
+    if(reservation.items && reservation.items.length){
+        itemsHtml = `<button class="order-toggle" data-id="${reservation.id}" type="button">Show order</button>
+            <div id="order-${reservation.id}" class="order-list" style="display:none;"><ul>`;
+        reservation.items.forEach(it=>{
+            itemsHtml += `<li>${it.name} x${it.qty} — ₱${it.price}</li>`;
+        });
+        itemsHtml += "</ul></div>";
+    }
+
+    let paymentHtml = `<strong style="color:var(--yellow)">${reservation.payment_method||'none'}</strong>
+        <div><button class="btn-pay pay-now" data-id="${reservation.id}" type="button">Pay</button></div>`;
+
+    // append row
+    const tr = $(`
+        <tr data-reservation='${JSON.stringify(reservation)}'>
+            <td>${reservation.id}</td>
+            <td>${reservation.name || ''}</td>
+            <td>${reservation.time}</td>
+            <td>${reservation.table_id}</td>
+            <td>${reservation.people}</td>
+            <td class="res-status">${reservation.status}</td>
+            <td class="res-payment">${paymentHtml}</td>
+            <td>${itemsHtml}</td>
+            <td>
+                <button class="btn-update update-res" type="button">Update</button>
+                <form method="POST" action="{{ url_for('delete_reservation') }}" style="display:inline;">
+                    <input type="hidden" name="reservation_id" value="${reservation.id}">
+                    <button class="btn-delete" type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+    `);
+
+    // append and ensure no "no reservations" row remains
+    const tbody = $("#reservationsTable tbody");
+    tbody.find("tr").each(function(){ if($(this).find('td').length==1) $(this).remove(); });
+    tbody.append(tr);
+}
+
+// Load orders (existing)
+$(document).ready(function(){
+    function loadOrders(){
+        $.getJSON("/get_order", function(response){
+            const tbody = $("#ordersTable tbody");
+            tbody.empty();
+            if(response.success && response.orders && response.orders.length){
+                response.orders.forEach(o => {
+                    let itemsHtml = "<ul style='padding-left:14px; margin:0'>";
+                    (o.items||[]).forEach(it => {
+                        itemsHtml += `<li>${it.name} x${it.qty} — ₱${it.price}</li>`;
+                    });
+                    itemsHtml += "</ul>";
+
+                    tbody.append(`
+                        <tr>
+                            <td>${o.id}</td>
+                            <td>${o.time}</td>
+                            <td>${itemsHtml}</td>
+                            <td>₱${o.total}</td>
+                            <td>${o.status}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                tbody.append("<tr><td colspan='5' style='text-align:center; opacity:.6'>No orders yet</td></tr>");
+            }
+        });
+    }
+
+    loadOrders(); // initial load
+});
+</script>
+</body>
+</html>

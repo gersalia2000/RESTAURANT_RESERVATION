@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Admin Dashboard — Plate & Chill</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+body {
+    margin:0;
+    font-family: Inter, system-ui, Arial;
+    color:#fff;
+    background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.65)), url('{{ url_for("static", filename="images/home_bg.png") }}') center/cover fixed no-repeat;
+}
+.container {
+    max-width:1200px;
+    margin:28px auto;
+    padding:18px;
+}
+header h1 {
+    margin:0 0 20px 0;
+    font-size:24px;
+    text-align:center;
+}
+.panel {
+    background:rgba(0,0,0,0.6);
+    padding:14px;
+    border-radius:10px;
+    margin-bottom:20px;
+}
+.panel h2, .panel h3 {
+    margin-top:0; margin-bottom:10px;
+}
+
+/* Floor map */
+.floor {
+    position:relative;
+    height:520px;
+    margin-bottom:30px;
+    display:flex; justify-content:center; align-items:center;
+    flex-wrap:wrap;
+    gap:30px;
+}
+.table-container { position:relative; display:flex; justify-content:center; align-items:center; }
+.table {
+    position:relative;
+    z-index:2;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:12px; font-weight:700;
+    min-width:80px; min-height:64px;
+    transition: all .15s;
+    cursor:pointer;
+}
+.table.available{ background:#2ecc71; color:#042612; }
+.table.reserved{ background:#e74c3c; color:#fff; }
+.table.small{ width:90px; height:60px; }
+.table.wide{ width:140px; height:90px; }
+
+.table .num { position:absolute; top:6px; left:8px; font-size:12px; font-weight:800; }
+.table .cap { font-size:16px; }
+
+.chair{
+    width:18px; height:18px; background:#f1c40f; border-radius:50%;
+    position:absolute; z-index:1;
+}
+.chair.top{ top:-24px; left:50%; transform:translateX(-50%); }
+.chair.bottom{ bottom:-24px; left:50%; transform:translateX(-50%); }
+.chair.left{ left:-24px; top:50%; transform:translateY(-50%); }
+.chair.right{ right:-24px; top:50%; transform:translateY(-50%); }
+
+/* Tables below */
+table { width:100%; border-collapse:collapse; margin-top:12px; }
+th, td { padding:8px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; }
+button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; font-weight:700; }
+.btn-delete { background:#e74c3c; color:#fff; }
+.btn-mark-paid { background:#2ecc71; color:#042612; }
+
+@media(max-width:980px){ .floor {flex-direction:column; align-items:center;} }
+</style>
+</head>
+<body>
+
+<div class="container">
+<header>
+<h1>Admin Dashboard — Welcome {{ session.username }}</h1>
+</header>
+
+<!-- Floor Map -->
+<div class="panel floor" id="floorMap">
+  {% for t in tables %}
+  <div class="table-container" id="container{{ t.table_number }}" data-id="{{ t.id }}">
+    <!-- Chairs -->
+    <div class="chair top"></div>
+    <div class="chair bottom"></div>
+    <div class="chair left"></div>
+    <div class="chair right"></div>
+
+    <!-- Table -->
+    <div class="table {% if t.status=='available' %}available{% else %}reserved{% endif %} {% if t.capacity<=2 %}small{% endif %}"
+         id="t{{ t.table_number }}"
+         data-number="{{ t.table_number }}" data-capacity="{{ t.capacity }}"
+         title="Table {{ t.table_number }} — {{ t.capacity }} seats">
+      <div class="num">#{{ t.table_number }}</div>
+      {% if t.status == 'available' %}
+        <div class="cap">{{ t.capacity }}p</div>
+      {% else %}
+        <div class="cap">RESERVED</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Reservations -->
+<div class="panel">
+<h3>Reservations</h3>
+<table>
+<thead><tr><th>#</th><th>Name</th><th>Time</th><th>Table</th><th>People</th><th>Status</th><th>Payment</th><th>Actions</th></tr></thead>
+<tbody>
+{% for r in reservations %}
+<tr>
+  <td>{{ r.id }}</td>
+  <td>{{ r.user_name }}</td>
+  <td>{{ r.time }}</td>
+  <td>{{ r.table_id or 'N/A' }}</td>
+  <td>{{ r.people }}</td>
+  <td>
+    <select class="status-dropdown" data-id="{{ r.id }}">
+      <option value="pending" {% if r.status=='pending' %}selected{% endif %}>Pending</option>
+      <option value="ready" {% if r.status=='ready' %}selected{% endif %}>Ready</option>
+      <option value="completed" {% if r.status=='completed' %}selected{% endif %}>Completed</option>
+    </select>
+  </td>
+  <td>{{ r.payment_method or 'none' }} <button class="btn-mark-paid" data-id="{{ r.id }}">Mark Paid</button></td>
+  <td><button class="btn-delete" data-id="{{ r.id }}">Delete</button></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<!-- Users -->
+<div class="panel">
+<h3>All Users</h3>
+<table>
+<thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+<tbody>
+{% for u in users %}
+<tr>
+  <td>{{ u.id }}</td>
+  <td>{{ u.username }}</td>
+  <td>{{ u.email }}</td>
+  <td>{{ u.role }}</td>
+  <td><button class="btn-delete" data-id="{{ u.id }}">Delete</button></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<!-- JS -->
+<script>
+// Place tables
+function placeTables(){
+  const containers = document.querySelectorAll('.table-container');
+  containers.forEach(c=>{
+    const table = c.querySelector('.table');
+    table.addEventListener('click', ()=>{
+      const id = c.dataset.id;
+      const current = table.classList.contains('available') ? 'available' : 'reserved';
+      const newStatus = current==='available' ? 'reserved' : 'available';
+      table.classList.remove(current); table.classList.add(newStatus);
+      fetch('/update_table_status',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id,status:newStatus})})
+        .then(r=>r.json()).then(d=>console.log(d));
+    });
+  });
+}
+
+// Mark Paid button
+document.querySelectorAll('.btn-mark-paid').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const id = btn.dataset.id;
+    fetch('/mark_paid',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})})
+      .then(r=>r.json()).then(()=> location.reload());
+  });
+});
+
+// Status dropdown change
+document.querySelectorAll('.status-dropdown').forEach(dd=>{
+  dd.addEventListener('change', ()=>{
+    const id = dd.dataset.id;
+    const status = dd.value;
+    fetch('/update_reservation_status',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id,status})})
+      .then(r=>r.json()).then(()=> console.log('Updated'));
+  });
+});
+
+// Delete buttons
+document.querySelectorAll('.btn-delete').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const id = btn.dataset.id;
+    if(confirm('Are you sure you want to delete?')){
+      fetch('/delete_item',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})})
+        .then(r=>r.json()).then(()=> location.reload());
+    }
+  });
+});
+
+window.addEventListener('load', placeTables);
+</script>
+
+</body>
+</html>
