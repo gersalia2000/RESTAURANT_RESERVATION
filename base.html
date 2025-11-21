@@ -23,7 +23,7 @@
       background-attachment: fixed;
       font-family: "Poppins", sans-serif;
       color: #fff;
-      min-height: 100vh;
+      min-height: 400vh;
     }
 
     .site-header {
@@ -154,7 +154,8 @@
         <a href="{{ url_for('menu') }}" class="{% if request.endpoint == 'menu' %}active{% endif %}">Menu</a>
         <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">About Us</a>
         <a href="{{ url_for('contact') }}" class="{% if request.endpoint == 'contact' %}active{% endif %}">Contact Us</a>
-        <a href="{{ url_for('reservations') }}" class="{% if request.endpoint == 'reservations' %}active{% endif %}">Reservations</a>
+        <a href="{{ url_for('login') }}" class="{% if request.endpoint == 'login' %}active{% endif %}">Log in</a>
+
       </nav>
       <div class="auth">
         {% if session.get('username') %}
@@ -175,7 +176,4 @@
   </footer>
 </body>
 </html>
-
-
-
 
