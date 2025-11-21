@@ -2,7 +2,39 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<section class="home-background" aria-label="Home background">
+<style>
+.home-background {
+    position: relative;
+    min-height: 80vh;
+    background-image: url('{{ url_for("static", filename="images/dining_area.jpg") }}');  /* ⬅ your dining area */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.home-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45); /* dark overlay so text is readable */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.home-sub {
+    color: #fff;
+    font-size: 28px;
+    text-align: center;
+    padding: 20px;
+    font-weight: 600;
+    text-shadow: 0 4px 16px rgba(0,0,0,0.65);
+}
+</style>
+
+<section class="home-background">
   <div class="home-overlay">
     <p class="home-sub">Welcome — a cozy dining spot where comfort food meets a relaxing vibe.</p>
   </div>
@@ -10,8 +42,5 @@
 
 <section class="page-section container">
   <h2 style="text-align:center; margin-top:18px;">COME VISIT US SOON!</h2>
-  <div class="home-gallery">
-   <img src="https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=1200&q=80" alt="Dining area option 5" />
-  </div>
 </section>
 {% endblock %}
