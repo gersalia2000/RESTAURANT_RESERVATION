@@ -1,98 +1,193 @@
 {% extends "base.html" %}
-{% block title %}Menu - Plate & Chill{% endblock %}
+
+{% block title %}Menu | Plate & Chill{% endblock %}
 
 {% block content %}
-<style>
-  body.menu-bg {
-    background-image: url('https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=1200&q=80');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    color: #fff;
-  }
+<h1>Our Menu</h1>
 
-  .menu-wrapper { 
-    max-width: 1100px; 
-    margin: 40px auto; 
-    padding: 28px; 
-    background: rgba(10,10,10,0.6); 
-    border-radius: 12px; 
-  }
+<!-- Drinks Section -->
+<h2>Drinks</h2>
+<div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center;">
 
-  .menu-header { 
-    display:flex; 
-    justify-content:flex-start; 
-    align-items:center; 
-    gap:20px; 
-    margin-bottom:18px; 
-  }
-
-  .menu-header h1 { font-size: 34px; letter-spacing: 1px; margin:0; }
-
-  .menu-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-
-  .menu-section { 
-    background: rgba(255,255,255,0.03); 
-    padding: 16px; 
-    border-radius: 10px; 
-    min-height: 220px; 
-  }
-
-  .menu-section h2 { 
-    font-size: 20px; 
-    margin: 0 0 10px 0; 
-    border-bottom: 1px solid rgba(255,255,255,0.06); 
-    padding-bottom: 8px; 
-  }
-
-  .menu-item { 
-    display:flex; 
-    justify-content:space-between; 
-    align-items:center; 
-    padding: 10px 6px; 
-    border-bottom: 1px dashed rgba(255,255,255,0.04); 
-    cursor: default; 
-    color: #fff; 
-  }
-
-  @media (max-width: 800px) { .menu-grid { grid-template-columns: 1fr; } }
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  document.body.classList.add('menu-bg');
-  // Disabled selection functionality
-});
-</script>
-
-<section class="menu-wrapper">
-  <div class="menu-header">
-    <h1>DINNER MENU</h1>
-  </div>
-
-  <div class="menu-grid">
-    <div class="menu-section">
-      <h2>Meals</h2>
-      <div class="menu-list">
-        {% for item in menu_items if item.category=='Food' %}
-        <div class="menu-item">
-          <span>{{ item.name }}</span> <span>₱{{ item.price }}</span>
-        </div>
-        {% endfor %}
-      </div>
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/drinks/macchiato.png') }}" alt="Caramel Iced Macchiato" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Caramel Iced Macchiato</h3>
+        <p>₱140</p>
     </div>
 
-    <div class="menu-section">
-      <h2>Drinks & Desserts</h2>
-      <div class="menu-list">
-        {% for item in menu_items if item.category=='Drink' or item.category=='Dessert' %}
-        <div class="menu-item">
-          <span>{{ item.name }}</span> <span>₱{{ item.price }}</span>
-        </div>
-        {% endfor %}
-      </div>
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/drinks/mangoshake.png') }}" alt="Mango Tropical Shake" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Mango Tropical Shake</h3>
+        <p>₱120</p>
     </div>
-  </div>
-</section>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/drinks/melon.png') }}" alt="Wintermelon Milk Tea" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Wintermelon Milk Tea</h3>
+        <p>₱100</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/drinks/mocha.png') }}" alt="Iced Mocha Latte" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Iced Mocha Latte</h3>
+        <p>₱150</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/drinks/lemonade.png') }}" alt="Fresh Lemonade Splash" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Fresh Lemonade Splash</h3>
+        <p>₱90</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/drinks/icedtea.png') }}" alt="Classic Iced Tea" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Classic Iced Tea</h3>
+        <p>₱80</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/drinks/bacardi.png') }}" alt="Bacardi Cocktail (Mockable)" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Bacardi Cocktail (Mockable)</h3>
+        <p>₱180</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/drinks/water.png') }}" alt="Sparkling Water" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Sparkling Water</h3>
+        <p>₱70</p>
+    </div>
+
+</div>
+
+<!-- Main Food Section -->
+<h2>Main Food</h2>
+<div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center;">
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/adoboflakes.png') }}" alt="Adobo Falkes" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Adobo Flakes Rice Bowl </h3>
+        <p>₱200</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/brisket.png') }}" alt="Brisket" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Smoked Beef Brisket with Slaw</h3>
+        <p>₱250</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/chickenandveggies.png') }}" alt="Chicken and Veggies" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Herb-Roasted Chicken & Veggies</h3>
+        <p>₱220</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/mac.png') }}" alt="Mac & Cheese" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Baked Mac & Cheese Supreme</h3>
+        <p>₱180</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/pata.png') }}" alt="Pata" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Crispy Pata Filipino Style</h3>
+        <p>₱300</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/pizza.png') }}" alt="Pizza" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Margherita Wood-Fired Pizza</h3>
+        <p>₱280</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/ribs.png') }}" alt="Ribs" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>BBQ Baby Back Ribs & Mash</h3>
+        <p>₱350</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/salmon.png') }}" alt="Salmon" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Salmon Teriyaki with Salad </h3>
+        <p>₱320</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/shrimp.png') }}" alt="Shrimp" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Garlic Butter Shrimp Linguine </h3>
+        <p>₱270</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/sisig.png') }}" alt="Sisig" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3> Crispy Pork Sisig Platter</h3>
+        <p>₱220</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/soup.png') }}" alt="Soup" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Creamy Mushroom Soup & Bread </h3>
+        <p>₱150</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/spicychicken.png') }}" alt="Spicy Chicken" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Spicy Korean Fried Chicken </h3>
+        <p>₱250</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/tapa.png') }}" alt="Tapa" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3> Beef Tapa with Garlic Rice & Egg</h3>
+        <p>₱200</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/teriyaki.png') }}" alt="Teriyaki" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3> Teriyaki Chicken Rice Bowl </h3>
+        <p>₱230</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/main/vege.png') }}" alt="Vegetables" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Vegetarian Buddha Bowl </h3>
+        <p>₱180</p>
+    </div>
+</div>
+
+<!-- Desserts Section -->
+<h2>Desserts</h2>
+<div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center;">
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/desserts/lava.png') }}" alt="Chocolate Lava Cake" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Chocolate Lava Cake</h3>
+        <p>₱160</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/desserts/cheesecake.png') }}" alt="Classic Cheesecake Slice" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Classic Cheesecake Slice</h3>
+        <p>₱150</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/desserts/halohalo.png') }}" alt="Halo-halo Sundae" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Halo-halo Sundae</h3>
+        <p>₱140</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/desserts/flan.png') }}" alt="Leche Flan Caramel" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Leche Flan Caramel</h3>
+        <p>₱130</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; width:180px; text-align:center;">
+        <img src="{{ url_for('static', filename='images/desserts/tart.png') }}" alt="Fruit Tart" width="150" height="150" style="border-radius:8px; object-fit:cover;">
+        <h3>Fruit Tart</h3>
+        <p>₱120</p>
+    </div>
+
+</div>
+
+
 {% endblock %}
