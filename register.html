@@ -51,7 +51,7 @@
 
   .submit-btn {
     width: 100%;
-    background: #e85d04;
+    background: #f9fc61;
     color: #fff;
     border: none;
     padding: 12px;
@@ -62,7 +62,7 @@
   }
 
   .submit-btn:hover {
-    background: #d9480f;
+    background: #faf768;
   }
 
   .login-link {
@@ -72,12 +72,21 @@
   }
 
   .login-link a {
-    color: #e85d04;
+    color: #f2ff80;
     text-decoration: none;
   }
 </style>
 
 <main>
+    
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="flash flash-{{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
   <h1>Create Account</h1>
   <form method="POST" action="{{ url_for('register') }}">
     <input type="text" name="username" placeholder="Full Name" required>
