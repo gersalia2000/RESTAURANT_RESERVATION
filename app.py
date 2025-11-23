@@ -170,12 +170,12 @@ def init_db():
         )
     """)
 
-    # Populate tables if empty: 5×4p, 3×6p, 8×2p => total 16
+    # Populate tables if empty: 5×4p, 3×6, 8×2 => total 16
     cursor.execute("SELECT COUNT(*) AS cnt FROM tables")
     cnt = cursor.fetchone().get("cnt", 0)
     if cnt == 0:
         tables_data = [
-            (1,4),(2,4),(3,4),(4,4),(5,4),     # 5 tables, 4 chairs
+            (1,4,),(2,4),(3,4),(4,4),(5,4),     # 5 tables, 4 chairs
             (6,6),(7,6),(8,6),                 # 3 tables, 6 chairs
             (9,2),(10,2),(11,2),(12,2),(13,2),(14,2),(15,2),(16,2)  # 8 tables, 2 chairs
         ]
@@ -413,19 +413,34 @@ def mark_payment():
 @app.route("/release_table", methods=["POST"])
 def release_table():
     if not session.get("is_admin"):
-        flash("Admin only.", "error"); return redirect(url_for("admin_login"))
-    table_id = request.form.get("table_id")
-    db = get_db(); cursor = db.cursor()
-    try:
-        cursor.execute("UPDATE tables SET status=%s, reserved_until=NULL WHERE id=%s", ("available", table_id))
-        # optionally mark reservations that used that table as cancelled or released
-        cursor.execute("UPDATE reservations SET status=%s WHERE table_id=%s AND status=%s", ("released", table_id, "reserved"))
-        db.commit()
-        flash("Table released (available).", "success")
-    except Exception as e:
-        db.rollback(); flash(f"Could not release table: {e}", "error")
-    return redirect(url_for("admin"))
+        return jsonify({"success": False, "error": "Admin only"}), 403
 
+    data = request.get_json()  # <- read JSON payload
+    table_id = data.get("table_id")
+
+    if not table_id:
+        return jsonify({"success": False, "error": "Missing table_id"}), 400
+
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        # Release the table
+        cursor.execute(
+            "UPDATE tables SET status=%s, reserved_until=NULL WHERE id=%s",
+            ("available", table_id)
+        )
+        # Optionally release reservations linked to this table
+        cursor.execute(
+            "UPDATE reservations SET status=%s WHERE table_id=%s AND status=%s",
+            ("released", table_id, "reserved")
+        )
+
+        db.commit()
+        return jsonify({"success": True, "message": "Table released"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 # --------------------------
 # Create order and confirm reservation (admin confirms payment)
 # --------------------------
@@ -917,16 +932,25 @@ def edit_reservation(id):
 # ==========================
 @app.route('/delete_reservation', methods=['POST'])
 def delete_reservation():
-    reservation_id = request.form.get('reservation_id')
+    data = request.get_json()
+    reservation_id = data.get('reservation_id')
+
     if not reservation_id:
         return jsonify({"success": False, "error": "No reservation selected"})
+
+    try:
+        reservation_id = int(reservation_id)
+    except:
+        return jsonify({"success": False, "error": f"Invalid reservation id: {reservation_id}"})
 
     db = get_db()
     cursor = db.cursor()
     try:
         cursor.execute("SELECT table_id FROM reservations WHERE id=%s", (reservation_id,))
         res = cursor.fetchone()
-        table_id = res[0] if res else None
+        if not res:
+            return jsonify({"success": False, "error": f"Reservation {reservation_id} does not exist"})
+        table_id = res[0]
 
         cursor.execute("DELETE FROM reservations WHERE id=%s", (reservation_id,))
         if table_id:
@@ -937,6 +961,7 @@ def delete_reservation():
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "error": str(e)})
+
 
 
 
