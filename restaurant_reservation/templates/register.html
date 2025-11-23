@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Register - Plate & Chill{% endblock %}
+
+{% block content %}
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  main {
+    max-width: 400px;
+    margin: 120px auto 60px auto;
+    background: rgba(0,0,0,0.55);
+    border-radius: 12px;
+    padding: 40px 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  }
+
+  h1 {
+    color: #ffd369;
+    text-align: center;
+    font-family: "Playfair Display", serif;
+    margin-bottom: 30px;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  form input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    display: block;
+  }
+
+  .password-container {
+    position: relative;
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    cursor: pointer;
+    color: #555;
+  }
+
+  .submit-btn {
+    width: 100%;
+    background: #f9fc61;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  .submit-btn:hover {
+    background: #faf768;
+  }
+
+  .login-link {
+    text-align: center;
+    margin-top: 12px;
+    color: #fff;
+  }
+
+  .login-link a {
+    color: #f2ff80;
+    text-decoration: none;
+  }
+</style>
+
+<main>
+    
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="flash flash-{{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <h1>Create Account</h1>
+  <form method="POST" action="{{ url_for('register') }}">
+    <input type="text" name="username" placeholder="Full Name" required>
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="text" name="number" placeholder="Contact Number" required>
+
+    <div class="password-container">
+      <input type="password" id="register-password" name="password" placeholder="Password" required>
+      <span class="toggle-password" onclick="togglePassword('register-password', this)">👁️</span>
+    </div>
+
+    <button type="submit" class="submit-btn">Register</button>
+  </form>
+  <div class="login-link">
+    Already have an account? <a href="{{ url_for('login') }}">Login</a>
+  </div>
+</main>
+
+<script>
+  function togglePassword(id, el) {
+    const input = document.getElementById(id);
+    if (input.type === "password") {
+      input.type = "text";
+      el.textContent = "🙈";
+    } else {
+      input.type = "password";
+      el.textContent = "👁️";
+    }
+  }
+</script>
+
+{% if session.get('registered') %}
+<script>
+  window.location.href = "{{ url_for('login') }}";
+</script>
+{% endif %}
+{% endblock %}
