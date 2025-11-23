@@ -297,76 +297,67 @@ def parse_reservation_datetime(date_part:str, time_part:str):
 
 # --------------------------
 # Submit payment (Modal)
-# Cash / GCash / Card
+# Cash / GCash /
 # --------------------------
 @app.route("/submit_payment", methods=["POST"])
 def submit_payment():
     if "user_id" not in session:
-        return jsonify({"error": "Please login to submit payment."}), 401
+        return jsonify({"success": False, "error": "Please login first"}), 401
 
     reservation_id = request.form.get("reservation_id")
     method = request.form.get("payment_method")
 
     if not reservation_id or not method:
-        return jsonify({"error": "Missing reservation ID or payment method."}), 400
+        return jsonify({"success": False, "error": "Missing reservation_id or method"}), 400
 
     db = get_db()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor()
 
     try:
-        # Check reservation exists
-        cursor.execute("SELECT * FROM reservations WHERE id=%s", (reservation_id,))
-        res = cursor.fetchone()
-        if not res:
-            return jsonify({"error": "Reservation not found."}), 404
+        # --- GET TOTAL FROM ORDERS TABLE ---
+        cursor.execute("SELECT total FROM orders WHERE reservation_id = %s", (reservation_id,))
+        order_row = cursor.fetchone()
 
-        user_id = session["user_id"]
-        total_amount = res.get("total") or 0
-
-        # ---------- CASH ----------
-        if method == "cash":
-            cursor.execute("""
-                INSERT INTO payments (user_id, reservation_id, name, payment_type, card_number, cvc, amount, created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
-            """, (user_id, reservation_id, "Pay at Counter", "cash", "", "", total_amount))
-            cursor.execute("UPDATE reservations SET payment_status='pending', payment_method='cash' WHERE id=%s", (reservation_id,))
-
-        # ---------- GCASH ----------
-        elif method == "gcash":
-            cursor.execute("""
-                INSERT INTO payments (user_id, reservation_id, name, payment_type, card_number, cvc, amount, created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
-            """, (user_id, reservation_id, "GCash Payment", "gcash", "", "", total_amount))
-            cursor.execute("UPDATE reservations SET payment_status='paid', payment_method='gcash' WHERE id=%s", (reservation_id,))
-
-        # ---------- CARD ----------
-        elif method == "card":
-            card_name   = str(request.form.get("card_name") or "").strip()
-            card_number = str(request.form.get("card_number") or "").replace(" ", "")
-            cvc         = str(request.form.get("card_cvc") or "").strip()
-
-            if not card_number or not cvc or not card_name:
-                return jsonify({"error": "Card info incomplete."}), 400
-
-            last4 = card_number[-4:] if len(card_number) >= 4 else card_number
-            masked_card = f"xxxx-xxxx-xxxx-{last4}"
-
-            cursor.execute("""
-                INSERT INTO payments (user_id, reservation_id, name, payment_type, card_number, cvc, amount, created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
-            """, (user_id, reservation_id, card_name, "card", masked_card, cvc, total_amount))
-            cursor.execute("UPDATE reservations SET payment_status='paid', payment_method='card' WHERE id=%s", (reservation_id,))
-
+        if order_row:
+            total_amount = float(order_row[0])
         else:
-            return jsonify({"error": "Invalid payment method."}), 400
+            total_amount = 0.00
+
+        # --- INSERT PAYMENT ---
+        cursor.execute("""
+            INSERT INTO payments (user_id, reservation_id, name, payment_type, amount, created_at)
+            VALUES (%s, %s, %s, %s, %s, NOW())
+        """, (
+            session["user_id"],
+            reservation_id,
+            "Payment",
+            method,
+            total_amount
+        ))
+
+        # --- UPDATE RESERVATION PAYMENT STATUS ---
+        cursor.execute("""
+            UPDATE reservations
+            SET payment_status = 'paid',
+                payment_method = %s,
+                status = 'Paid'
+            WHERE id = %s
+        """, (method, reservation_id))
 
         db.commit()
-        return jsonify({"success": True, "status": "Paid" if method in ["gcash", "card"] else "Pending", "method": method.capitalize()}), 200
+
+        return jsonify({
+            "success": True,
+            "status": "Paid",
+            "method": method
+        })
 
     except Exception as e:
         db.rollback()
-        print("Payment Error:", e)
-        return jsonify({"error": str(e)}), 500
+        print("PAYMENT ERROR:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 
 #============================================================
 # mark payment 
@@ -379,49 +370,43 @@ def mark_payment():
         return redirect(url_for("login"))
 
     reservation_id = request.form.get("reservation_id", "").strip()
-    method = request.form.get("payment_method", "").strip()
-    status = request.form.get("payment_status", "").strip()
-    card_cvc = request.form.get("card_cvc", "").strip()  # optional, only for card
+    method = request.form.get("payment_method", "").strip().lower()  # only 'gcash' or 'cash'
 
-    if not reservation_id:
-        flash("Missing reservation ID.", "error")
+    if not reservation_id or method not in ["gcash", "cash"]:
+        flash("Invalid reservation or payment method.", "error")
         return redirect(url_for("user_dashboard"))
 
     db = get_db()
     cursor = db.cursor()
 
     try:
-        # check reservation exists
+        # Check reservation exists
         cursor.execute("SELECT * FROM reservations WHERE id=%s", (reservation_id,))
         res = cursor.fetchone()
         if not res:
             flash("Reservation not found.", "error")
             return redirect(url_for("user_dashboard"))
 
-        # Update payment fields
+        # Set payment status automatically
+        payment_status = "paid" if method == "gcash" else "pending"
+
+        # Update reservation
         cursor.execute("""
             UPDATE reservations
             SET payment_method=%s,
                 payment_status=%s
             WHERE id=%s
-        """, (method, status, reservation_id))
-
-        # If card, update payment table with CVC (optional)
-        if method == "card" and card_cvc:
-            cursor.execute("""
-                UPDATE payments
-                SET card_cvc=%s
-                WHERE reservation_id=%s AND payment_type='card'
-            """, (card_cvc, reservation_id))
+        """, (method, payment_status, reservation_id))
 
         db.commit()
-        flash("Payment updated.", "success")
+        flash(f"Payment updated: {method.upper()}", "success")
 
     except Exception as e:
         db.rollback()
         flash(f"Error: {e}", "error")
 
     return redirect(url_for("user_dashboard"))
+
 # --------------------------
 # Admin release route (make table available again)
 # --------------------------
@@ -934,31 +919,25 @@ def edit_reservation(id):
 def delete_reservation():
     reservation_id = request.form.get('reservation_id')
     if not reservation_id:
-        flash("No reservation selected", "error")
-        return redirect(url_for('user_dashboard'))
+        return jsonify({"success": False, "error": "No reservation selected"})
 
     db = get_db()
     cursor = db.cursor()
     try:
-        # Get table id first to free it
         cursor.execute("SELECT table_id FROM reservations WHERE id=%s", (reservation_id,))
         res = cursor.fetchone()
         table_id = res[0] if res else None
 
-        # Delete reservation
         cursor.execute("DELETE FROM reservations WHERE id=%s", (reservation_id,))
-
-        # Free table if reserved
         if table_id:
             cursor.execute("UPDATE tables SET status='available', reserved_until=NULL WHERE id=%s", (table_id,))
 
         db.commit()
-        flash("Reservation deleted successfully", "success")
+        return jsonify({"success": True})
     except Exception as e:
         db.rollback()
-        flash(f"Error deleting reservation: {str(e)}", "error")
+        return jsonify({"success": False, "error": str(e)})
 
-    return redirect(url_for('user_dashboard'))
 
 
 #=====================================================================
@@ -967,40 +946,38 @@ def delete_reservation():
 
 @app.route('/update_reservation', methods=['POST'])
 def update_reservation():
-    reservation_id = request.form.get('reservation_id')
-    date = request.form.get('date')
-    time = request.form.get('time')
-    people = request.form.get('people')
-    items = request.form.get('items')  # JSON string
-
-    if not reservation_id:
-        flash("No reservation selected", "error")
-        return redirect(url_for('user_dashboard'))
-
-    # Get DB and cursor
-    db = get_db()
-    cursor = db.cursor()
+    from flask import jsonify
+    import json
 
     try:
-        # Convert items to JSON safely
-        import json
-        items_list = json.loads(items) if items else []
+        data = request.get_json()
+        if not data or 'id' not in data:
+            return jsonify({"success": False, "error": "No reservation ID provided"})
 
-        # Update the reservation
+        reservation_id = data['id']
+        time = data.get('time', '')
+        table_id = data.get('table_id', None)
+        people = data.get('people', 1)
+        items = data.get('items', [])  # optional JSON list
+
+        db = get_db()
+        cursor = db.cursor()
+
+        # Only update columns that exist
         cursor.execute("""
-            UPDATE reservations 
-            SET time=%s, people=%s, items=%s
+            UPDATE reservations
+            SET time=%s, table_id=%s, people=%s, items=%s
             WHERE id=%s
-        """, (f"{date} {time}", people, json.dumps(items_list), reservation_id))
-
+        """, (time, table_id, people, json.dumps(items), reservation_id))
         db.commit()
-        flash("Reservation updated successfully", "success")
+
+        return jsonify({"success": True})
 
     except Exception as e:
         db.rollback()
-        flash(f"Error updating reservation: {str(e)}", "error")
+        return jsonify({"success": False, "error": str(e)})
 
-    return redirect(url_for('user_dashboard'))
+
 # --------------------------
 # User dashboard (updated to send tables + menu parts)
 # --------------------------
@@ -1075,3 +1052,6 @@ def uploaded_file(filename):
 # --------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
