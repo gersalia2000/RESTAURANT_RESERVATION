@@ -204,7 +204,9 @@ button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; font-
   <div class="box" id="successText">Success</div>
 </div>
 
+
 <script>
+        
 // Safe JSON parse and response helper
 async function parseJSONSafely(response){
     const ct = response.headers.get('content-type') || '';
@@ -225,8 +227,6 @@ function showSuccessPopup(msg){
 }
 
 // Server-side arrays exposed
-const RESERVATIONS = {{ reservations|tojson|safe }};
-const TABLES = {{ tables|tojson|safe }};
 
 function findReservation(id){ return RESERVATIONS.find(r => String(r.id) === String(id)) || null; }
 function populateAdmTableOptions(){
