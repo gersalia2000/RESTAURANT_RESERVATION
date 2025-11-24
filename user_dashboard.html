@@ -310,19 +310,20 @@ $(document).ready(function(){
 
     /* ---------- load reservations (unchanged) ---------- */
     function loadReservations(){
-        $.getJSON("/get_reservations", function(response){
-            const tbody = $("#reservationsTable tbody");
-            tbody.empty();
-            if(response.success && response.reservations && response.reservations.length){
-                response.reservations.forEach(r => addReservationRow(r));
-            } else {
-                tbody.append("<tr><td colspan='10' style='text-align:center; opacity:.6'>No reservations yet</td></tr>");
-            }
-        }).fail(function(jqxhr, textStatus, error){
-            console.error("GET /get_reservations failed:", jqxhr.status, jqxhr.responseText || error);
-            alert("Failed to load reservations — check console.");
-        });
-    }
+    $.getJSON("/get_reservations", function(response){
+        const tbody = $("#reservationsTable tbody");
+        tbody.empty();
+        if(response.success && response.reservations && response.reservations.length){
+            response.reservations.forEach(r => addReservationRow(r));
+        } else {
+            tbody.append("<tr><td colspan='10' style='text-align:center; opacity:.6'>No reservations yet</td></tr>");
+        }
+    }).fail(function(jqxhr, textStatus, error){
+        console.error("GET /get_reservations failed:", jqxhr.status, jqxhr.responseText || error);
+    });
+}
+
+
 
     /* ---------- BOOK (unchanged) ---------- */
     $("#bookBtn").click(function(){
