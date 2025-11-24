@@ -441,6 +441,54 @@ def release_table():
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
+    
+#==========================================
+# Reserve table
+#==========================================
+
+@app.route("/reserve_table", methods=["POST"])
+def reserve_table():
+    if "user_id" not in session:
+        return jsonify({"success": False, "error": "Login required"}), 401
+
+    data = request.get_json()
+    table_id = data.get("table_id")
+    reserved_until = data.get("reserved_until")  # e.g., "2025-11-24 19:00:00"
+
+    if not table_id or not reserved_until:
+        return jsonify({"success": False, "error": "Missing table_id or reserved_until"}), 400
+
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        # Make sure the table is available
+        cursor.execute("SELECT status FROM tables WHERE id=%s", (table_id,))
+        table = cursor.fetchone()
+        if not table:
+            return jsonify({"success": False, "error": "Table not found"}), 404
+        if table[0] != "available":
+            return jsonify({"success": False, "error": "Table already reserved"}), 400
+
+        # Reserve the table
+        cursor.execute(
+            "UPDATE tables SET status=%s, reserved_until=%s WHERE id=%s",
+            ("reserved", reserved_until, table_id)
+        )
+
+        # Insert reservation record
+        cursor.execute(
+            "INSERT INTO reservations (user_id, table_id, status, reserved_until) VALUES (%s, %s, %s, %s)",
+            (session["user_id"], table_id, "reserved", reserved_until)
+        )
+
+        db.commit()
+        return jsonify({"success": True, "message": "Table reserved"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    
 # --------------------------
 # Create order and confirm reservation (admin confirms payment)
 # --------------------------
@@ -663,34 +711,39 @@ def admin():
 def get_reservations():
     user_id = session.get("user_id")
     if not user_id:
-        return jsonify([])
+        return jsonify({"success": True, "reservations": []})
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
-
     cursor.execute("""
         SELECT 
-            id,
-            table_id,
-            time,
-            people,
-            items,
-            payment_status
-        FROM reservations
-        WHERE user_id = %s
-        ORDER BY time DESC
+            r.id,
+            r.table_id,
+            r.time,
+            r.people,
+            r.items,
+            r.status,
+            r.payment_status,
+            r.payment_method,
+            o.total
+        FROM reservations r
+        LEFT JOIN orders o ON o.reservation_id = r.id
+        WHERE r.user_id = %s
+        ORDER BY r.time DESC
     """, (user_id,))
-
     rows = cursor.fetchall()
 
-    # Decode items JSON
+    # Decode JSON items
     for row in rows:
         try:
             row["items"] = json.loads(row["items"]) if row["items"] else []
         except:
             row["items"] = []
+        row["total"] = row.get("total") or 0.00
 
-    return jsonify(rows)
+    return jsonify({"success": True, "reservations": rows})
+
+
 
 
 #==================================================================================
@@ -779,9 +832,19 @@ def book_reservation():
         payment_method = data.get('payment_method', None)
         payment_details = data.get('payment_details', '')
 
-        # Convert datetime
         from datetime import datetime
         dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+
+        # ----------------------------
+        # Update table status
+        # ----------------------------
+        cursor.execute(
+            "UPDATE tables SET status=%s, reserved_until=%s WHERE id=%s AND status='available'",
+            ("reserved", dt, table_id)
+        )
+        if cursor.rowcount == 0:
+            # Table already reserved
+            return jsonify({"success": False, "error": "Table is already reserved"}), 400
 
         # ----------------------------
         # INSERT INTO RESERVATIONS
@@ -801,14 +864,11 @@ def book_reservation():
         ))
 
         reservation_id = cursor.lastrowid
-        db.commit()
 
         # ----------------------------
-        # INSERT INTO ORDERS (JSON ONLY)
+        # INSERT INTO ORDERS
         # ----------------------------
-        total_amount = 0
-        for item in items:
-            total_amount += float(item["price"]) * int(item["qty"])
+        total_amount = sum(float(item["price"]) * int(item["qty"]) for item in items)
 
         cursor.execute("""
             INSERT INTO orders (reservation_id, user_id, items, total)
@@ -858,6 +918,7 @@ def book_reservation():
         db.rollback()
         print("ERROR:", e)
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 
 # ==========================
@@ -932,8 +993,8 @@ def edit_reservation(id):
 # ==========================
 @app.route('/delete_reservation', methods=['POST'])
 def delete_reservation():
-    data = request.get_json()
-    reservation_id = data.get('reservation_id')
+    # Use form instead of JSON
+    reservation_id = request.form.get('reservation_id')
 
     if not reservation_id:
         return jsonify({"success": False, "error": "No reservation selected"})
@@ -957,7 +1018,8 @@ def delete_reservation():
             cursor.execute("UPDATE tables SET status='available', reserved_until=NULL WHERE id=%s", (table_id,))
 
         db.commit()
-        return jsonify({"success": True})
+        # Redirect back to admin dashboard or return success
+        return redirect(url_for('admin_dashboard'))  # replace with your admin page route
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "error": str(e)})
