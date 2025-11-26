@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Plate & Chill{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      font-family: "Poppins", sans-serif;
+      color: #fff;
+      min-height: 400vh;
+    }
+
+    .site-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      z-index: 9999;
+      background: rgba(8, 8, 8, 0.92);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+    }
+
+    .header-inner {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      color: #ffd369;
+      font-weight: 700;
+      font-size: 22px;
+      text-decoration: none;
+      font-family: "Playfair Display", serif;
+    }
+
+    .site-nav {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .site-nav a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 8px 10px;
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .site-nav a:hover,
+    .site-nav a.active {
+      background: rgba(255,255,255,0.08);
+      color: #ffd369;
+    }
+
+    .auth .btn {
+      background: #b58a43;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      text-decoration: none;
+      display:inline-block;
+    }
+
+    main {
+      padding-top: 100px;
+      padding-bottom: 60px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 90%;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 10px;
+      backdrop-filter: blur(3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+
+    h1, h2, h3 {
+      color: #ffd369;
+      font-family: "Playfair Display", serif;
+      text-align: center;
+    }
+
+    p {
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .hero-title {
+      text-align: center;
+      font-size: 72px;
+      color: #fff;
+      text-shadow: 0 6px 18px rgba(0,0,0,0.6);
+      margin-top: 140px;
+      font-family: "Playfair Display", serif;
+    }
+
+    .hero-subtitle {
+      text-align: center;
+      font-size: 20px;
+      color: #f1f1f1;
+      margin-bottom: 80px;
+    }
+
+    .site-footer {
+      background: rgba(0,0,0,0.75);
+      text-align:center;
+      padding: 12px 0;
+      color: #fff;
+      position: relative;
+      bottom: 0;
+      width: 100%;
+    }
+
+    @media (max-width:700px){
+      .site-nav a { font-size:14px; padding:6px 8px; }
+      .brand { font-size:18px; }
+      .hero-title { font-size: 42px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('home') }}">Plate & Chill</a>
+      <nav class="site-nav">
+        <a href="{{ url_for('home') }}" class="{% if request.endpoint == 'home' %}active{% endif %}">Home</a>
+        <a href="{{ url_for('menu') }}" class="{% if request.endpoint == 'menu' %}active{% endif %}">Menu</a>
+        <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">About Us</a>
+        <a href="{{ url_for('contact') }}" class="{% if request.endpoint == 'contact' %}active{% endif %}">Contact Us</a>
+        <a href="{{ url_for('login') }}" class="{% if request.endpoint == 'login' %}active{% endif %}">Log in</a>
+
+      </nav>
+      <div class="auth">
+        {% if session.get('username') %}
+          <span class="greet">Hi, {{ session.get('username') }}</span>
+          <a href="{{ url_for('logout') }}" class="btn">Logout</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div>
+    </div>
+  </footer>
+</body>
+</html>
+

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Register - Plate & Chill{% endblock %}
+
+{% block content %}
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  main {
+    max-width: 420px;
+    margin: 120px auto 60px auto;
+    background: rgba(0,0,0,0.55);
+    border-radius: 12px;
+    padding: 28px 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  }
+  h1 { color: #ffd369; text-align: center; font-family: "Playfair Display", serif; margin-bottom: 18px; }
+  form { display:flex; flex-direction:column; gap:10px; }
+  form input, form textarea { width:100%; padding:10px; border-radius:6px; border:none; display:block; }
+  textarea { min-height:70px; resize:vertical; }
+  .password-container { position:relative; }
+  .toggle-password { position:absolute; right:10px; top:10px; cursor:pointer; color:#555; }
+  .submit-btn { width:100%; background:#f9fc61; color:#000; border:none; padding:12px; border-radius:8px; font-size:16px; cursor:pointer; transition:0.2s; }
+  .submit-btn:hover { background:#faf768; }
+  .login-link { text-align:center; margin-top:8px; color:#fff; }
+  .login-link a { color:#f2ff80; text-decoration:none; }
+  .flash { padding:8px; border-radius:6px; margin-bottom:8px; }
+</style>
+
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="flash flash-{{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <h1>Create Account</h1>
+  <form id="register-form" method="POST" action="{{ url_for('register') }}" onsubmit="return validateRegister();">
+    <input type="text" name="name" id="name" placeholder="Name" required>
+
+    <input type="email" name="email" id="email" placeholder="Email" required>
+
+    <input type="text" name="number" id="number" placeholder="Contact Number" required>
+
+    <input type="number" name="age" id="age" placeholder="Age" required>
+
+    <textarea name="address" id="address" placeholder="Address" required></textarea>
+
+    <div class="password-container">
+      <input type="password" id="register-password" name="password" placeholder="Password" required>
+      <span class="toggle-password" onclick="togglePassword('register-password', this)">👁️</span>
+    </div>
+
+    <div class="password-container">
+      <input type="password" id="confirm-password" name="confirm_password" placeholder="Confirm Password" required>
+      <span class="toggle-password" onclick="togglePassword('confirm-password', this)">👁️</span>
+    </div>
+
+    <button type="submit" class="submit-btn">Register</button>
+  </form>
+
+  <div class="login-link">
+    Already have an account? <a href="{{ url_for('login') }}">Login</a>
+  </div>
+</main>
+
+<script>
+  function togglePassword(id, el) {
+    const input = document.getElementById(id);
+    if (input.type === "password") { input.type = "text"; el.textContent = "🙈"; }
+    else { input.type = "password"; el.textContent = "👁️"; }
+  }
+
+  function validateRegister() {
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const number = document.getElementById('number').value.trim();
+    const age = document.getElementById('age').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const pass = document.getElementById('register-password').value;
+    const conf = document.getElementById('confirm-password').value;
+
+    // Name
+    if (!name) { alert('Please enter your name.'); return false; }
+    if (!/^[A-Za-z\s]+$/.test(name)) { alert('Name must contain letters and spaces only.'); return false; }
+
+    // Email
+    if (!email) { alert('Please enter your email.'); return false; }
+    if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) { alert('Please provide a valid email address.'); return false; }
+
+    // Number
+    if (!number) { alert('Please enter your contact number.'); return false; }
+    if (!/^\d+$/.test(number)) { alert('Contact number must contain digits only.'); return false; }
+
+    // Age
+    if (!age) { alert('Please enter your age.'); return false; }
+    if (isNaN(parseInt(age, 10))) { alert('Age must be a number.'); return false; }
+
+    // Address
+    if (!address) { alert('Please enter your address.'); return false; }
+
+    // Password
+    if (!pass) { alert('Please enter a password.'); return false; }
+    if (pass.length < 8) { alert('Password must be at least 8 characters long.'); return false; }
+    if (!/[A-Za-z]/.test(pass)) { alert('Password must contain at least one letter.'); return false; }
+    if (!/[0-9]/.test(pass)) { alert('Password must contain at least one number.'); return false; }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pass)) { alert('Password must contain at least one special character.'); return false; }
+
+    // Confirm password
+    if (pass !== conf) { alert('Passwords do not match.'); return false; }
+
+    return true;
+  }
+</script>
+
+{% endblock %}

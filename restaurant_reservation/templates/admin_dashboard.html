@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Admin Dashboard — Plate & Chill</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+body {
+    margin:0;
+    font-family: Inter, system-ui, Arial;
+    color:#fff;
+    background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.65)), url('{{ url_for("static", filename="images/home_bg.png") }}') center/cover fixed no-repeat;
+}
+.container { max-width:1200px; margin:28px auto; padding:18px; }
+header h1 { margin:0 0 20px 0; font-size:24px; text-align:center; }
+.panel { position:relative; background:rgba(0,0,0,0.6); padding:14px; border-radius:10px; margin-bottom:20px; }
+.panel h2, .panel h3 { margin-top:0; margin-bottom:10px; }
+
+/* Logout button */
+.logout-btn {
+    position:absolute;
+    top:14px;
+    right:14px;
+    padding:8px 12px;
+    background:#e74c3c;
+    color:#fff;
+    font-weight:700;
+    border-radius:6px;
+    text-decoration:none;
+    cursor:pointer;
+}
+
+/* Floor map */
+.floor {
+    position:relative;
+    min-height:240px;
+    margin-bottom:30px;
+    display:flex; justify-content:center; align-items:center;
+    flex-wrap:wrap;
+    gap:20px;
+    padding:12px;
+}
+.table-container { position:relative; display:flex; justify-content:center; align-items:center; }
+.table {
+    position:relative;
+    z-index:2;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-radius:12px; font-weight:700; text-align:center;
+    min-width:100px; min-height:68px;
+    transition: all .12s;
+    cursor:pointer;
+    padding:8px;
+}
+.table.available{ background:#2ecc71; color:#042612; }
+.table.reserved{ background:#e74c3c; color:#fff; }
+.table.small{ width:90px; height:60px; }
+.table.wide{ width:140px; height:90px; }
+.table .num { font-size:14px; font-weight:800; }
+.table .cap { font-size:14px; margin-top:6px; }
+
+/* Tables below */
+table { width:100%; border-collapse:collapse; margin-top:12px; }
+th, td { padding:8px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; }
+button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; font-weight:700; }
+.btn-delete { background:#e74c3c; color:#fff; }
+.btn-mark-paid { background:#2ecc71; color:#042612; }
+.small-btn { background:#ffd369; color:#000; padding:6px 10px; border-radius:6px; font-weight:700; }
+.modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:99999; padding:16px; }
+.modal.open{ display:flex; }
+.modal-card{ width:560px; max-width:96%; background:#fff; color:#000; padding:18px; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.4); }
+.success-popup {
+  position: fixed; inset:0; display:none; justify-content:center; align-items:center; z-index:100000;
+}
+.success-popup .box { background:#2ecc71; color:#fff; padding:18px 28px; border-radius:8px; font-weight:800; }
+@media(max-width:980px){ .floor {flex-direction:column; align-items:center;} }
+</style>
+</head>
+<body>
+
+
+<div class="container">
+<header>
+<h1>Admin Dashboard — Welcome {{ session.username }}</h1>
+</header>
+
+<!-- Logout button outside the floor map panel -->
+<a href="{{ url_for('logout') }}" class="logout-btn" id="logoutBtn">Logout</a>
+
+<!-- Floor Map Panel -->
+<div class="panel" style="position:relative;">
+  <div class="floor" id="floorMap">
+    {% for t in tables %}
+    <div class="table-container" data-id="{{ t.id }}" data-number="{{ t.table_number }}" data-capacity="{{ t.capacity }}">
+      <div class="table {% if t.status=='available' %}available{% else %}reserved{% endif %} {% if t.capacity<=2 %}small{% endif %}"
+           data-id="{{ t.id }}" data-number="{{ t.table_number }}" data-capacity="{{ t.capacity }}" id="t{{ t.table_number }}">
+        <div class="num">#{{ t.table_number }}</div>
+        {% if t.status == 'available' %}
+          <div class="cap">{{ t.capacity }}persons</div>
+        {% else %}
+          <div class="cap">RESERVED{% if t.reserved_until %}<br>{{ t.reserved_until }}{% endif %}{% if t.reserved_by %}<br>{{ t.reserved_by }}{% endif %}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+
+<!-- Reservations -->
+<div class="panel">
+<h3>Reservations</h3>
+<table id="adminReservations">
+<thead><tr><th>#</th><th>Name</th><th>Time</th><th>Table</th><th>People</th><th>Status</th><th>Payment</th><th>Actions</th></tr></thead>
+<tbody>
+{% for r in reservations %}
+<tr data-reservation='{{ r|tojson }}'>
+  <td>{{ r.id }}</td>
+  <td class="res-name">{{ r.user_name or 'N/A' }}</td>
+  <td class="res-time">{{ r.time }}</td>
+  <td class="res-table">{{ r.table_number or 'N/A' }}</td>
+  <td class="res-people">{{ r.people }}</td>
+  <td>
+    <select class="status-dropdown" data-id="{{ r.id }}">
+      <option value="pending" {% if r.status=='pending' %}selected{% endif %}>Pending</option>
+      <option value="ready" {% if r.status=='ready' %}selected{% endif %}>Ready</option>
+      <option value="completed" {% if r.status=='completed' %}selected{% endif %}>Completed</option>
+    </select>
+  </td>
+  <td>
+    <select class="payment-select" data-id="{{ r.id }}">
+      <option value="none" {% if r.payment_status!='paid' %}selected{% endif %}>none</option>
+      <option value="paid" {% if r.payment_status=='paid' %}selected{% endif %}>paid</option>
+    </select>
+    {% if r.payment_status != 'paid' %}
+      <button class="btn-mark-paid small-btn" data-id="{{ r.id }}">Mark Paid</button>
+    {% endif %}
+  </td>
+  <td>
+    <button class="small-btn update-res-btn" data-id="{{ r.id }}">Update</button>
+    <button class="btn-delete res-delete" data-id="{{ r.id }}">Delete</button>
+  </td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<!-- Orders -->
+<div class="panel">
+<h3>All Orders</h3>
+<table>
+<thead><tr><th>ID</th><th>User</th><th>Items</th><th>Total</th><th>Time</th><th>Actions</th></tr></thead>
+<tbody>
+{% for o in orders %}
+<tr>
+  <td>{{ o.id }}</td>
+  <td>{{ o.user_name or 'N/A' }}</td>
+  <td>{{ o.items }}</td>
+  <td>{{ o.total }}</td>
+  <td>{{ o.time }}</td>
+  <td><button class="btn-delete order-delete" data-id="{{ o.id }}">Delete</button></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<!-- Update Reservation Modal -->
+<div id="updateModal" class="modal" aria-hidden="true">
+  <div class="modal-card">
+    <h3>Edit Reservation</h3>
+    <form id="adminUpdateForm">
+      <input type="hidden" id="adm_upd_id" name="id">
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <label style="flex:1">
+          Date<br>
+          <input type="date" id="adm_upd_date" name="date" required>
+        </label>
+        <label style="flex:1">
+          Time<br>
+          <input type="time" id="adm_upd_time" name="time" required>
+        </label>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <label>
+          People<br>
+          <input type="number" id="adm_upd_people" name="people" min="1" value="1" required style="width:110px;">
+        </label>
+        <label style="flex:1;">
+          Table<br>
+          <select id="adm_upd_table" name="table_id"></select>
+        </label>
+      </div>
+      <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="small-btn" id="adm_upd_cancel">Cancel</button>
+        <button type="submit" class="small-btn">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Success popup -->
+<div class="success-popup" id="successPopup">
+  <div class="box" id="successText">Success</div>
+</div>
+
+
+<script>
+        
+// Safe JSON parse and response helper
+async function parseJSONSafely(response){
+    const ct = response.headers.get('content-type') || '';
+    const text = await response.text();
+    if(ct.includes('application/json')){
+        try{ return JSON.parse(text); } catch(e){ return { _parse_error:true, text }; }
+    }
+    // not JSON (likely HTML or redirect)
+    return { _not_json:true, text, status: response.status };
+}
+
+// Helper to show a short success popup
+function showSuccessPopup(msg){
+    const el = document.getElementById('successPopup');
+    document.getElementById('successText').textContent = msg || 'Success';
+    el.style.display = 'flex';
+    setTimeout(()=> el.style.display = 'none', 1300);
+}
+
+// Server-side arrays exposed
+
+function findReservation(id){ return RESERVATIONS.find(r => String(r.id) === String(id)) || null; }
+function populateAdmTableOptions(){
+    const sel = document.getElementById('adm_upd_table'); sel.innerHTML = '';
+    TABLES.forEach(t => {
+        const opt = document.createElement('option'); opt.value = t.id; opt.text = `#${t.table_number} (${t.capacity}persons)`; sel.appendChild(opt);
+    });
+}
+
+function markTableReserved(tableId, userName, timeStr){
+    const el = document.querySelector(`.table[data-id='${tableId}']`);
+    if(!el) return;
+    el.classList.remove('available'); el.classList.add('reserved');
+    el.querySelector('.cap').innerHTML = `RESERVED${timeStr ? '<br>' + timeStr : ''}${userName ? '<br>' + userName : ''}`;
+}
+function markTableAvailable(tableId){
+    const el = document.querySelector(`.table[data-id='${tableId}']`);
+    if(!el) return;
+    el.classList.remove('reserved'); el.classList.add('available');
+    el.querySelector('.cap').textContent = (el.dataset.capacity ? el.dataset.capacity + 'persons' : '');
+}
+
+// initialize marks
+document.addEventListener('DOMContentLoaded', function(){
+    RESERVATIONS.forEach(r => { if(r.table_id) markTableReserved(r.table_id, r.user_name || r.name || '', r.time || r.reserved_until || ''); });
+    TABLES.forEach(t => { if(t.status && t.status !== 'available') markTableReserved(t.id, t.reserved_by || '', t.reserved_until || ''); });
+    populateAdmTableOptions();
+});
+
+// Release reserved table: robust call with JSON body
+document.querySelectorAll('.table-container').forEach(container => {
+    container.addEventListener('click', function() {
+        const tableEl = container.querySelector('.table');
+        const tableId = container.dataset.id;
+        if (!tableId) return;
+
+        // Only trigger if currently reserved
+        if (tableEl.classList.contains('reserved')) {
+            if (!confirm('Release this table (make it available)?')) return;
+
+            fetch('/release_table', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table_id: tableId })
+            })
+            .then(parseJSONSafely)
+            .then(d => {
+                if (d && (d.success || d.status === 'success')) {
+                    // update table UI immediately
+                    markTableAvailable(tableId);
+                    showSuccessPopup('Table released');
+
+                    // optional: remove reservation row from reservations table
+                    const resRow = document.querySelector(`#adminReservations tr[data-reservation*='"table_id":${tableId}']`);
+                    if (resRow) {
+                        resRow.remove();
+                    }
+                } else {
+                    console.error('release_table result', d);
+                    alert('Could not release table — check console.');
+                }
+            })
+            .catch(err => {
+                console.error('release_table error', err);
+                alert('Could not release table — check console.');
+            });
+        }
+    });
+});
+
+
+// Update reservation status (fallback to update_reservation endpoint)
+document.querySelectorAll('.status-dropdown').forEach(dd=>{
+    dd.addEventListener('change', function(){
+        const id = this.dataset.id; const status = this.value;
+        // try dedicated endpoint first (if you have it), otherwise fallback to update_reservation
+        fetch('/update_reservation_status', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ id, status })
+        }).then(parseJSONSafely).then(d=>{
+            if(d && (d.success || d.status === 'success')) { showSuccessPopup('Status updated'); return; }
+            // fallback
+            return fetch('{{ url_for("update_reservation") }}', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, status })
+            }).then(parseJSONSafely).then(r=>{ if(r && (r.success || r.status === 'success')) showSuccessPopup('Status updated'); else console.warn('status update fallback failed', r); });
+        }).catch(err=>{ console.warn('status update error', err); });
+    });
+});
+
+// Payment select change: if 'paid' try mark_paid, fallback to update_reservation
+document.querySelectorAll('.payment-select').forEach(sel=>{
+    sel.addEventListener('change', function(){
+        const id = this.dataset.id; const val = this.value;
+        if(val === 'paid'){
+            fetch('/mark_paid', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) })
+            .then(parseJSONSafely).then(d=>{
+                if(d && (d.success || d.status === 'success')) { showSuccessPopup('Marked paid'); location.reload(); }
+                else {
+                    // fallback: update_reservation with payment_status
+                    return fetch('{{ url_for("update_reservation") }}', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, payment_status: 'paid' }) })
+                    .then(parseJSONSafely).then(r=>{ if(r && (r.success || r.status === 'success')) { showSuccessPopup('Marked paid'); location.reload(); } else { console.error('mark paid fallback', r); alert('Could not mark paid'); }});
+                }
+            }).catch(err=>{
+                console.warn('mark_paid failed, fallback', err);
+                fetch('{{ url_for("update_reservation") }}', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, payment_status: 'paid' }) })
+                .then(parseJSONSafely).then(r=>{ if(r && (r.success || r.status === 'success')) { showSuccessPopup('Marked paid'); location.reload(); } else { console.error('fallback mark paid', r); alert('Could not mark paid'); }});
+            });
+        } else {
+            // clear payment_status
+            fetch('{{ url_for("update_reservation") }}', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, payment_status: 'none' }) })
+            .then(parseJSONSafely).then(d=>{ if(d && (d.success || d.status === 'success')) { showSuccessPopup('Payment cleared'); location.reload(); } else { console.error('clear payment', d); alert('Could not update payment'); }})
+            .catch(err=>{ console.error('clear payment err', err); alert('Could not update payment — check console.'); });
+        }
+    });
+});
+
+// Mark Paid button (fallback to update route too)
+document.querySelectorAll('.btn-mark-paid').forEach(btn=>{
+    btn.addEventListener('click', function(){
+        const id = this.dataset.id;
+        if(!confirm('Mark reservation #' + id + ' as paid?')) return;
+        fetch('/mark_paid', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) })
+        .then(parseJSONSafely).then(d=>{
+            if(d && (d.success || d.status === 'success')) { showSuccessPopup('Marked paid'); location.reload(); }
+            else {
+                fetch('{{ url_for("update_reservation") }}', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, payment_status: 'paid' }) })
+                .then(parseJSONSafely).then(r=>{ if(r && (r.success || r.status === 'success')) { showSuccessPopup('Marked paid'); location.reload(); } else { console.error('mark_paid fallback', r); alert('Could not mark paid'); }});
+            }
+        }).catch(err=>{
+            console.warn('mark_paid failed, fallback', err);
+            fetch('{{ url_for("update_reservation") }}', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, payment_status: 'paid' }) })
+            .then(parseJSONSafely).then(r=>{ if(r && (r.success || r.status === 'success')) { showSuccessPopup('Marked paid'); location.reload(); } else { console.error('fallback mark_paid', r); alert('Could not mark paid'); }});
+        });
+    });
+});
+
+// delete reservation: try form-encoded (Flask request.form) then fallback to JSON
+function deleteReservationById(id){
+    // first attempt: x-www-form-urlencoded
+    return fetch('/delete_reservation', {
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({ reservation_id: id })
+    }).then(async resp => {
+        const parsed = await parseJSONSafely(resp);
+        // If parsed seems valid and success -> return
+        if(parsed && (parsed.success || parsed.status === 'success')) return parsed;
+        // If server returned unsupported media type or not JSON, fallback to JSON body
+        // If parsed._not_json and resp.status === 415 -> try JSON
+        return fetch('/delete_reservation', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ reservation_id: id })
+        }).then(parseJSONSafely);
+    });
+}
+
+document.querySelectorAll('.res-delete').forEach(btn=>{
+    btn.addEventListener('click', function(){
+        const id = this.dataset.id;
+        if(!confirm('Delete reservation #' + id + '?')) return;
+        deleteReservationById(id).then(d=>{
+            if(d && (d.success || d.status === 'success')) {
+                showSuccessPopup('Deleted');
+                setTimeout(()=> location.reload(), 700);
+            } else {
+                console.error('delete_reservation failed', d);
+                alert('Could not delete reservation — check console.');
+            }
+        }).catch(err=>{
+            console.error('delete_reservation failed', err);
+            alert('Could not delete reservation — check console.');
+        });
+    });
+});
+
+// delete order: try form encoded then fallback
+function deleteOrderById(id){
+    return fetch('/delete_order', {
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({ order_id: id })
+    }).then(async resp=>{
+        const parsed = await parseJSONSafely(resp);
+        if(parsed && (parsed.status === 'success' || parsed.success)) return parsed;
+        return fetch('/delete_order', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ order_id: id }) }).then(parseJSONSafely);
+    });
+}
+
+document.querySelectorAll('.order-delete').forEach(btn=>{
+    btn.addEventListener('click', function(){
+        const id = this.dataset.id;
+        if(!confirm('Delete order #' + id + '?')) return;
+        deleteOrderById(id).then(d=>{
+            if(d && (d.status === 'success' || d.success)) { showSuccessPopup('Order deleted'); setTimeout(()=> location.reload(),700); }
+            else { console.error('delete_order failed', d); alert('Could not delete order'); }
+        }).catch(err=>{ console.error('delete_order failed', err); alert('Could not delete order — check console.'); });
+    });
+});
+
+// Update modal open
+document.querySelectorAll('.update-res-btn').forEach(btn=>{
+    btn.addEventListener('click', function(){
+        const id = this.dataset.id; const res = findReservation(id);
+        if(!res){ alert('Reservation not found'); return; }
+        let datePart='', timePart='';
+        if(res.time && typeof res.time === 'string'){ const sp = res.time.split(' '); datePart = sp[0]||''; timePart = sp[1] ? sp[1].split(':').slice(0,2).join(':') : ''; }
+        document.getElementById('adm_upd_id').value = res.id;
+        document.getElementById('adm_upd_date').value = datePart;
+        document.getElementById('adm_upd_time').value = timePart;
+        document.getElementById('adm_upd_people').value = res.people || 1;
+        populateAdmTableOptions();
+        document.getElementById('adm_upd_table').value = res.table_id || (TABLES.length ? TABLES[0].id : '');
+        document.getElementById('updateModal').classList.add('open');
+    });
+});
+document.getElementById('adm_upd_cancel').addEventListener('click', function(){ document.getElementById('updateModal').classList.remove('open'); });
+
+// Submit update: uses /update_reservation and shows success popup on success
+document.getElementById('adminUpdateForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const id = document.getElementById('adm_upd_id').value;
+    const date = document.getElementById('adm_upd_date').value;
+    const time = document.getElementById('adm_upd_time').value;
+    const people = document.getElementById('adm_upd_people').value;
+    const table_id = document.getElementById('adm_upd_table').value;
+    if(!id || !date || !time || !table_id){ alert('Please fill all fields.'); return; }
+    const payload = { id, time: date + ' ' + time, people, table_id };
+    fetch('{{ url_for("update_reservation") }}', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+    .then(parseJSONSafely)
+    .then(d=>{
+        if(d && (d.success || d.status === 'success')) {
+            showSuccessPopup('Reservation updated');
+            document.getElementById('updateModal').classList.remove('open');
+            setTimeout(()=> location.reload(), 900);
+        } else {
+            console.error('update_reservation failed', d);
+            alert('Update failed — check console.');
+        }
+    }).catch(err=>{ console.error('update_reservation failed', err); alert('Update failed — check console.'); });
+});
+</script>
+
+</div>
+</body>
+</html>
