@@ -115,13 +115,15 @@ def init_db():
     db = get_db()
     cursor = db.cursor()
 
-    # Users
+    # Users - added age and address columns
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(255) NOT NULL,
             email VARCHAR(255) NOT NULL UNIQUE,
             number VARCHAR(50),
+            age INT NULL,
+            address VARCHAR(255) NULL,
             password_hash VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -159,6 +161,21 @@ def init_db():
         )
     """)
 
+    # Payments (create if missing) — your code referenced payments in multiple places
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS payments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            reservation_id INT,
+            name VARCHAR(255),
+            payment_type VARCHAR(50),
+            amount DECIMAL(10,2) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
+            FOREIGN KEY(reservation_id) REFERENCES reservations(id) ON DELETE SET NULL
+        )
+    """)
+
     # Tables (floor plan)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tables (
@@ -182,6 +199,7 @@ def init_db():
         cursor.executemany("INSERT INTO tables (table_number,capacity) VALUES (%s,%s)", tables_data)
 
     db.commit()
+
 
 with app.app_context():
     init_db()
@@ -214,52 +232,133 @@ def contact():
 @app.route("/register", methods=["GET","POST"])
 def register():
     if request.method == "POST":
-        username = request.form.get("username","").strip()
+        # Collect inputs
+        username = request.form.get("name","").strip()
         email = request.form.get("email","").strip()
         number = request.form.get("number","").strip()
+        age_raw = request.form.get("age","").strip()
+        address = request.form.get("address","").strip()
         password = request.form.get("password","")
-        if not username or not email or not password or not number:
-            flash("All fields required", "error"); return redirect(url_for("register"))
-        if username.lower() == ADMIN_USERNAME.lower():
-            flash("Cannot register as admin.", "error"); return redirect(url_for("register"))
-        db = get_db(); cursor=db.cursor()
+        confirm = request.form.get("confirm_password","")
+
+        # Required fields check
+        if not username or not email or not number or not age_raw or not address or not password or not confirm:
+            flash("All fields are required.", "error")
+            return redirect(url_for("register"))
+
+        # Name validation: letters and spaces only
+        import re
+        if not re.fullmatch(r"[A-Za-z\s]+", username):
+            flash("Name may contain letters and spaces only.", "error")
+            return redirect(url_for("register"))
+
+        # Email validation (generic)
+        if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", email):
+            flash("Please provide a valid email address.", "error")
+            return redirect(url_for("register"))
+
+        # Number: digits only
+        if not number.isdigit():
+            flash("Contact number must contain digits only.", "error")
+            return redirect(url_for("register"))
+
+        # Age: numeric only
         try:
+            age = int(age_raw)
+        except:
+            flash("Age must be a number.", "error")
+            return redirect(url_for("register"))
+
+        # Password validation: match and must contain number or special character
+        if password != confirm:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for("register"))
+        if not re.search(r"[0-9!@#$%^&*(),.?\":{}|<>]", password):
+            flash("Password must contain at least one number or special character.", "error")
+            return redirect(url_for("register"))
+
+        # Deny registering as admin username
+        if username.lower() == ADMIN_USERNAME.lower():
+            flash("Cannot register as admin.", "error")
+            return redirect(url_for("register"))
+
+        db = get_db()
+        cursor = db.cursor()
+        try:
+            # Check if email already exists
             cursor.execute("SELECT id FROM users WHERE email=%s", (email,))
             if cursor.fetchone():
-                flash("Email exists. Login.", "error"); return redirect(url_for("login"))
+                flash("Email exists. Try logging in.", "error")
+                return redirect(url_for("login"))
+
+            # Hash password and insert into database
+            from werkzeug.security import generate_password_hash
             pw_hash = generate_password_hash(password)
-            cursor.execute("INSERT INTO users (username,email,number,password_hash) VALUES (%s,%s,%s,%s)",
-                           (username,email,number,pw_hash))
+            cursor.execute(
+                "INSERT INTO users (username,email,number,age,address,password_hash) VALUES (%s,%s,%s,%s,%s,%s)",
+                (username, email, number, age, address, pw_hash)
+            )
             db.commit()
-            flash("Account created.", "success")
+            flash("Account created. Please login.", "success")
             return redirect(url_for("login"))
+
         except Exception as e:
-            db.rollback(); flash(f"Error: {e}","error"); return redirect(url_for("register"))
+            db.rollback()
+            flash(f"Error creating account: {e}", "error")
+            return redirect(url_for("register"))
+
     return render_template("register.html")
 
+
+
+
+#------------------------------------
+# Login 
+#------------------------------------
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
-        uname = request.form.get("username","").strip() or request.form.get("email","").strip()
+        name = request.form.get("name","").strip()
+        email = request.form.get("email","").strip().lower()
         password = request.form.get("password","")
-        if not uname or not password:
-            flash("Provide username/email and password.", "error"); return redirect(url_for("login"))
-        # admin
-        if uname == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session["is_admin"]=True; session["username"]=ADMIN_USERNAME
-            flash("Admin logged in.","success"); return redirect(url_for("admin"))
-        db=get_db(); cursor=db.cursor()
-        cursor.execute("SELECT * FROM users WHERE username=%s OR email=%s", (uname,uname))
+
+        if not name or not email or not password:
+            flash("Provide Name, Email, and Password.", "error")
+            return redirect(url_for("login"))
+
+        # admin quick-check (unchanged)
+        if name == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session["is_admin"] = True
+            session["username"] = ADMIN_USERNAME
+            flash("Admin logged in.", "success")
+            return redirect(url_for("admin"))
+
+        db = get_db()
+        cursor = db.cursor(pymysql.cursors.DictCursor)
+
+        # require both name and email to match the same user
+        cursor.execute("SELECT * FROM users WHERE username=%s AND LOWER(email)=%s", (name, email))
         user = cursor.fetchone()
+
         if user and check_password_hash(user["password_hash"], password):
-            session["user_id"]=user["id"]; session["username"]=user["username"]
-            flash(f"Welcome back, {user['username']}!", "success"); return redirect(url_for("user_dashboard"))
-        flash("Invalid credentials.","error"); return redirect(url_for("login"))
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            flash(f"Welcome back, {user['username']}!", "success")
+            return redirect(url_for("user_dashboard"))
+
+        flash("Invalid credentials. Make sure Name and Email match.", "error")
+        return redirect(url_for("login"))
+
     return render_template("login.html")
 
+
+# ✅ ADD THIS — FIXES YOUR logout BuildError
 @app.route("/logout")
 def logout():
-    session.clear(); flash("Logged out.","info"); return redirect(url_for("home"))
+    session.clear()     # clears all session data (user_id, username, admin flags, etc.)
+    flash("You have been logged out.", "success")
+    return redirect(url_for("login"))
+
 
 # --------------------------
 # API: get tables (live)
@@ -269,6 +368,41 @@ def get_tables():
     db=get_db(); cursor=db.cursor()
     cursor.execute("SELECT * FROM tables ORDER BY table_number ASC")
     return jsonify(cursor.fetchall())
+
+#-------------------------------
+#OTP
+#-------------------------------
+import random
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
+
+@app.route("/send_otp", methods=["POST"])
+def send_otp():
+    """Dummy route: just returns the OTP to the browser."""
+    otp = generate_otp()
+    session["payment_otp"] = otp          # store for later check
+    session["otp_expires"] = datetime.now().timestamp() + 300  # 5 min
+    # In real life you would email/SMS it; here we simply echo it back
+    return jsonify({"success": True, "otp": otp})
+
+
+@app.route("/check_otp", methods=["POST"])
+def check_otp():
+    supplied = request.json.get("otp", "").strip()
+    stored   = session.get("payment_otp")
+    expires  = session.get("otp_expires", 0)
+
+    if not stored or datetime.now().timestamp() > expires:
+        return jsonify({"success": False, "error": "OTP expired"})
+    if supplied != stored:
+        return jsonify({"success": False, "error": "Wrong OTP"})
+
+    # OTP OK – clear it and let the payment proceed
+    session.pop("payment_otp", None)
+    session.pop("otp_expires", None)
+    return jsonify({"success": True})
+
 
 # --------------------------
 # Create reservation (initial creation BEFORE payment)
