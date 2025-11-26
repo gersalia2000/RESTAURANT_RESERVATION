@@ -104,39 +104,63 @@
 <!-- MENU PANEL -->
 <div class="panel">
   <h3>Menu</h3>
-  <div class="menu-list" id="menuList">
-    {% for m in drinks %}
-      <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
-        <img src="{{ url_for('static', filename='images/drinks/' ~ m.image) }}" alt="{{ m.name }}">
-        <div style="flex:1">
-          <h4 style="margin:0;">{{ m.name }}</h4>
-          <p style="margin:4px 0 0 0;">₱{{ m.price }} — Drink</p>
-        </div>
-        <button class="small-btn add-item" type="button">Add</button>
+
+  <!--  THREE-COLUMN GRID  -->
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px;">
+
+    <!-- =====  DRINKS  ===== -->
+    <div class="menu-column">
+      <h4 style="margin:0 0 8px 0; color:var(--accent); font-size:18px;">Drinks</h4>
+      <div class="menu-list" id="drinksList">
+        {% for m in drinks %}
+          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+            <img src="{{ url_for('static', filename='images/drinks/' ~ m.image) }}" alt="{{ m.name }}">
+            <div style="flex:1">
+              <h5 style="margin:0;">{{ m.name }}</h5>
+              <p style="margin:2px 0 0 0;">₱{{ m.price }}</p>
+            </div>
+            <button class="small-btn add-item" type="button">Add</button>
+          </div>
+        {% endfor %}
       </div>
-    {% endfor %}
-    {% for m in main_foods %}
-      <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
-        <img src="{{ url_for('static', filename='images/main/' ~ m.image) }}" alt="{{ m.name }}">
-        <div style="flex:1">
-          <h4 style="margin:0;">{{ m.name }}</h4>
-          <p style="margin:4px 0 0 0;">₱{{ m.price }} — Main</p>
-        </div>
-        <button class="small-btn add-item" type="button">Add</button>
+    </div>
+
+    <!-- =====  MAIN FOOD  ===== -->
+    <div class="menu-column">
+      <h4 style="margin:0 0 8px 0; color:var(--accent); font-size:18px;">Main Food</h4>
+      <div class="menu-list" id="mainList">
+        {% for m in main_foods %}
+          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+            <img src="{{ url_for('static', filename='images/main/' ~ m.image) }}" alt="{{ m.name }}">
+            <div style="flex:1">
+              <h5 style="margin:0;">{{ m.name }}</h5>
+              <p style="margin:2px 0 0 0;">₱{{ m.price }}</p>
+            </div>
+            <button class="small-btn add-item" type="button">Add</button>
+          </div>
+        {% endfor %}
       </div>
-    {% endfor %}
-    {% for m in desserts %}
-      <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
-        <img src="{{ url_for('static', filename='images/desserts/' ~ m.image) }}" alt="{{ m.name }}">
-        <div style="flex:1">
-          <h4 style="margin:0;">{{ m.name }}</h4>
-          <p style="margin:4px 0 0 0;">₱{{ m.price }} — Dessert</p>
-        </div>
-        <button class="small-btn add-item" type="button">Add</button>
+    </div>
+
+    <!-- =====  DESSERTS  ===== -->
+    <div class="menu-column">
+      <h4 style="margin:0 0 8px 0; color:var(--accent); font-size:18px;">Desserts</h4>
+      <div class="menu-list" id="dessertsList">
+        {% for m in desserts %}
+          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+            <img src="{{ url_for('static', filename='images/desserts/' ~ m.image) }}" alt="{{ m.name }}">
+            <div style="flex:1">
+              <h5 style="margin:0;">{{ m.name }}</h5>
+              <p style="margin:2px 0 0 0;">₱{{ m.price }}</p>
+            </div>
+            <button class="small-btn add-item" type="button">Add</button>
+          </div>
+        {% endfor %}
       </div>
-    {% endfor %}
-  </div>
-</div>
+    </div>
+
+  </div><!-- /three-column grid -->
+</div><!-- /panel -->
 
 <!-- RESERVATIONS PANEL -->
 <div class="panel">
@@ -472,6 +496,32 @@ $(document).on('click', '#gcashOk', function() {
         alert("Payment failed — check console.");
     });
 });
+
+/* ===== OTP POP-UP BEFORE PAYMENT ===== */
+async function otpThenPay(reservationId, method) {
+  // 1. ask server for OTP (it returns it in this demo)
+  const {otp: code} = await fetch("{{ url_for('send_otp') }}", {method: "POST"})
+                              .then(r => r.json()).then(d => d.success ? d : Promise.reject());
+  // 2. show prompt
+  const supplied = prompt(`Enter the 6-digit code shown below to confirm payment:\n\n${code}`);
+  if (!supplied) return;  // user cancelled
+  // 3. verify
+  const ok = await fetch("{{ url_for('check_otp') }}", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({otp: supplied})
+  }).then(r => r.json());
+  if (!ok.success) { alert(ok.error || "Wrong code"); return; }
+  // 4. OTP correct – proceed with real payment
+  $.post("{{ url_for('submit_payment') }}", {reservation_id: reservationId, payment_method: method}, r => {
+      if (r.success) { updateReservationRow(reservationId, 'Paid', method); $("#paymentModal").fadeOut(200); showSuccess("Payment success"); }
+      else { alert("Payment failed: " + r.error); }
+  });
+}
+/* replace old GCash / Cash click handlers */
+$(document).off("click", "#modalCash").on("click", "#modalCash", () => otpThenPay(payReservationId, 'cash'));
+$(document).off("click", "#modalGcash").on("click", "#modalGcash", () => otpThenPay(payReservationId, 'gcash'));
+/* ===== /OTP POP-UP ===== */
 
 // GCash Cancel
 $(document).on('click', '#gcashCancelInner', function() {
