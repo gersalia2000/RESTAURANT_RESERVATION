@@ -32,43 +32,25 @@ ALLOWED_START_TIMES = [
 
 GCASH_QR_PATH = os.path.join("uploads", "gcash_qr.png")  # place your QR at static/uploads/gcash_qr.png
 
-# small sample MENU_ITEMS — keep expanding with your real list
-MENU_ITEMS = [
-    # DRINKS
-    {"id": 1, "name": "Caramel Iced Macchiato", "category": "Drinks", "price": 140, "image": "macchiato.png"},
-    {"id": 2, "name": "Mango Tropical Shake", "category": "Drinks", "price": 120, "image": "mangoshake.png"},
-    {"id": 3, "name": "Wintermelon Milk Tea", "category": "Drinks", "price": 100, "image": "melon.png"},
-    {"id": 4, "name": "Iced Mocha Latte", "category": "Drinks", "price": 150, "image": "mocha.png"},
-    {"id": 5, "name": "Fresh Lemonade Splash", "category": "Drinks", "price": 90, "image": "lemonade.png"},
-    {"id": 6, "name": "Classic Iced Tea", "category": "Drinks", "price": 80, "image": "icedtea.png"},
-    {"id": 7, "name": "Bacardi Cocktail (Mockable)", "category": "Drinks", "price": 180, "image": "bacardi.png"},
-    {"id": 8, "name": "Sparkling Water", "category": "Drinks", "price": 70, "image": "water.png"},
+# -------------  NEW:  read menu from DB  -------------
+def get_menu():
+    """Return *all* menu rows as list[dict]"""
+    with get_db().cursor(pymysql.cursors.DictCursor) as cur:
+        cur.execute("SELECT * FROM menu_items ORDER BY category, name")
+        return cur.fetchall() or []
 
-    # MAIN FOOD
-    {"id": 9, "name": "Adobo Flakes Rice Bowl", "category": "Main Food", "price": 200, "image": "adoboflakes.png"},
-    {"id": 10, "name": "Smoked Beef Brisket with Slaw", "category": "Main Food", "price": 250, "image": "brisket.png"},
-    {"id": 11, "name": "Herb-Roasted Chicken & Veggies", "category": "Main Food", "price": 220, "image": "chickenandveggies.png"},
-    {"id": 12, "name": "Baked Mac & Cheese Supreme", "category": "Main Food", "price": 180, "image": "mac.png"},
-    {"id": 13, "name": "Crispy Pata Filipino Style", "category": "Main Food", "price": 300, "image": "pata.png"},
-    {"id": 14, "name": "Margherita Wood-Fired Pizza", "category": "Main Food", "price": 280, "image": "pizza.png"},
-    {"id": 15, "name": "BBQ Baby Back Ribs & Mash", "category": "Main Food", "price": 350, "image": "ribs.png"},
-    {"id": 16, "name": "Salmon Teriyaki with Salad", "category": "Main Food", "price": 320, "image": "salmon.png"},
-    {"id": 17, "name": "Garlic Butter Shrimp Linguine", "category": "Main Food", "price": 270, "image": "shrimp.png"},
-    {"id": 18, "name": "Crispy Pork Sisig Platter", "category": "Main Food", "price": 220, "image": "sisig.png"},
-    {"id": 19, "name": "Creamy Mushroom Soup & Bread", "category": "Main Food", "price": 150, "image": "soup.png"},
-    {"id": 20, "name": "Spicy Korean Fried Chicken", "category": "Main Food", "price": 250, "image": "spicychicken.png"},
-    {"id": 21, "name": "Beef Tapa with Garlic Rice & Egg", "category": "Main Food", "price": 200, "image": "tapa.png"},
-    {"id": 22, "name": "Teriyaki Chicken Rice Bowl", "category": "Main Food", "price": 230, "image": "teriyaki.png"},
-    {"id": 23, "name": "Vegetarian Buddha Bowl", "category": "Main Food", "price": 180, "image": "vege.png"},
+def get_menu_map():
+    """Return dict {id: item_dict} – same shape as old MENU_MAP"""
+    return {int(item["id"]): item for item in get_menu()}
 
-    # DESSERTS
-    {"id": 24, "name": "Chocolate Lava Cake", "category": "Desserts", "price": 160, "image": "lava.png"},
-    {"id": 25, "name": "Classic Cheesecake Slice", "category": "Desserts", "price": 150, "image": "cheesecake.png"},
-    {"id": 26, "name": "Halo-halo Sundae", "category": "Desserts", "price": 140, "image": "halohalo.png"},
-    {"id": 27, "name": "Leche Flan Caramel", "category": "Desserts", "price": 130, "image": "flan.png"},
-    {"id": 28, "name": "Fruit Tart", "category": "Desserts", "price": 120, "image": "tart.png"},
-]
-MENU_MAP = {int(item["id"]): item for item in MENU_ITEMS}
+def get_menu_by_category():
+    """Return dict with keys Drinks / Main Food / Desserts"""
+    menu = get_menu()
+    return {
+        "Drinks":      [m for m in menu if m["category"] == "Drinks"],
+        "Main Food":   [m for m in menu if m["category"] == "Main Food"],
+        "Desserts":    [m for m in menu if m["category"] == "Desserts"]
+    }
 
 # Uploads
 UPLOAD_FOLDER = os.path.join(app.static_folder, "uploads")
@@ -186,6 +168,7 @@ def init_db():
             reserved_until DATETIME NULL
         )
     """)
+    
 
     # Populate tables if empty: 5×4p, 3×6, 8×2 => total 16
     cursor.execute("SELECT COUNT(*) AS cnt FROM tables")
@@ -216,8 +199,7 @@ def home():
 @app.route("/menu")
 def menu():
     # reuse the block you provided by rendering menu.html (you can convert your posted block into menu.html)
-    return render_template("menu.html", menu_items=MENU_ITEMS)
-
+    return render_template("menu.html", menu_items=get_menu())
 @app.route("/about")
 def about():
     return render_template("about.html")
@@ -658,8 +640,8 @@ def confirm_reservation():
             except Exception:
                 item_id = None
             qty = int(it.get("qty", 1)) if it.get("qty") is not None else 1
-            price = MENU_MAP.get(item_id, {}).get("price") if item_id in MENU_MAP else float(it.get("price",0))
-            name = MENU_MAP.get(item_id, {}).get("name") if item_id in MENU_MAP else (it.get("name") or str(item_id))
+            price = get_menu_map().get(item_id, {}).get("price") if item_id in get_menu_map() else float(it.get("price",0))
+            name  = get_menu_map().get(item_id, {}).get("name") if item_id in get_menu_map() else (it.get("name") or str(item_id))
             subtotal = float(price) * qty
             total += subtotal
             enhanced_items.append({"id": item_id, "qty": qty, "name": name, "price": price})
@@ -1127,36 +1109,30 @@ def edit_reservation(id):
 # ==========================
 @app.route('/delete_reservation', methods=['POST'])
 def delete_reservation():
-    # Use form instead of JSON
-    reservation_id = request.form.get('reservation_id')
+    # ---- 1. quick auth check ----
+    if 'username' not in session:          # or g.user / whatever you use
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
 
-    if not reservation_id:
-        return jsonify({"success": False, "error": "No reservation selected"})
+    # ---- 2. read id however it arrives ----
+    if request.content_type == 'application/json':
+        data = request.get_json() or {}
+        rid = data.get('reservation_id')
+    else:
+        rid = request.form.get('reservation_id')
 
+    if not rid:
+        return jsonify({'status': 'error', 'message': 'Missing reservation_id'}), 400
+
+    # ---- 3. do the delete ----
     try:
-        reservation_id = int(reservation_id)
-    except:
-        return jsonify({"success": False, "error": f"Invalid reservation id: {reservation_id}"})
-
-    db = get_db()
-    cursor = db.cursor()
-    try:
-        cursor.execute("SELECT table_id FROM reservations WHERE id=%s", (reservation_id,))
-        res = cursor.fetchone()
-        if not res:
-            return jsonify({"success": False, "error": f"Reservation {reservation_id} does not exist"})
-        table_id = res[0]
-
-        cursor.execute("DELETE FROM reservations WHERE id=%s", (reservation_id,))
-        if table_id:
-            cursor.execute("UPDATE tables SET status='available', reserved_until=NULL WHERE id=%s", (table_id,))
-
+        db = get_db()
+        with db.cursor() as cur:
+            cur.execute("DELETE FROM reservations WHERE id = %s", (rid,))
         db.commit()
-        # Redirect back to admin dashboard or return success
-        return redirect(url_for('admin_dashboard'))  # replace with your admin page route
+        return jsonify({'status': 'success'})
     except Exception as e:
         db.rollback()
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 
@@ -1197,6 +1173,7 @@ def update_reservation():
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "error": str(e)})
+
 
 
 # --------------------------
@@ -1246,9 +1223,9 @@ def user_dashboard():
     tables = cursor.fetchall() or []
 
     # ------------------- MENU CATEGORIES -------------------
-    drinks = [m for m in MENU_ITEMS if m.get("category") == "Drinks"]
-    main_foods = [m for m in MENU_ITEMS if m.get("category") == "Main Food"]
-    desserts = [m for m in MENU_ITEMS if m.get("category") == "Desserts"]
+    drinks     = get_menu_by_category()["Drinks"]
+    main_foods = get_menu_by_category()["Main Food"]
+    desserts   = get_menu_by_category()["Desserts"]
 
     # ------------------- RENDER TEMPLATE -------------------
     return render_template(
