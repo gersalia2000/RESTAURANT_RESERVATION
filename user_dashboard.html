@@ -57,6 +57,27 @@
 
     .modal *, #successPopup * { pointer-events: auto; }
 
+    /* -----  NEW: ORDER-SUMMARY MODAL  ----- */
+    #summaryList li{ display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:14px; }
+    #summaryList button{ margin-left:6px; padding:2px 6px; font-size:12px; }
+    /* NEW: card-like row with image */
+    .summary-card{ display:flex; gap:10px; align-items:center; background:rgba(0,0,0,.06); padding:8px; border-radius:8px; margin-bottom:6px;}
+    .summary-card img{ width:60px; height:60px; object-fit:cover; border-radius:6px;}
+    .summary-info{ flex:1;}
+    .summary-info .cat{ font-size:11px; color:#666; text-transform:uppercase;}
+
+    /* ----  NEW: columnised summary + right-side buttons ---- */
+    #summaryList{ display:flex; flex-direction:column; gap:10px; }
+    .summary-column{ display:flex; flex-direction:column; gap:6px; }
+    .summary-column h5{ margin:0 0 4px 0; font-size:15px; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; }
+    .summary-card{ justify-content:space-between; }
+    .summary-card>span{ display:flex; gap:4px; }
+
+    /* ----  NEW: background image for summary card ---- */
+    #summaryModal .modal-card{
+      background:#fff url('{{ url_for("static", filename="images/image.png") }}') center/cover no-repeat;
+    }
+
     @media(max-width:980px){ .menu-list{ grid-template-columns: 1fr; } .table { min-width:100px; } }
   </style>
 </head>
@@ -113,7 +134,7 @@
       <h4 style="margin:0 0 8px 0; color:var(--accent); font-size:18px;">Drinks</h4>
       <div class="menu-list" id="drinksList">
         {% for m in drinks %}
-          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}" data-cat="Drinks" data-img="{{ url_for('static', filename='images/drinks/' ~ m.image) }}">
             <img src="{{ url_for('static', filename='images/drinks/' ~ m.image) }}" alt="{{ m.name }}">
             <div style="flex:1">
               <h5 style="margin:0;">{{ m.name }}</h5>
@@ -130,7 +151,7 @@
       <h4 style="margin:0 0 8px 0; color:var(--accent); font-size:18px;">Main Food</h4>
       <div class="menu-list" id="mainList">
         {% for m in main_foods %}
-          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}" data-cat="Main Food" data-img="{{ url_for('static', filename='images/main/' ~ m.image) }}">
             <img src="{{ url_for('static', filename='images/main/' ~ m.image) }}" alt="{{ m.name }}">
             <div style="flex:1">
               <h5 style="margin:0;">{{ m.name }}</h5>
@@ -147,7 +168,7 @@
       <h4 style="margin:0 0 8px 0; color:var(--accent); font-size:18px;">Desserts</h4>
       <div class="menu-list" id="dessertsList">
         {% for m in desserts %}
-          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}">
+          <div class="menu-card" data-id="{{ m.id }}" data-name="{{ m.name }}" data-price="{{ m.price }}" data-cat="Desserts" data-img="{{ url_for('static', filename='images/desserts/' ~ m.image) }}">
             <img src="{{ url_for('static', filename='images/desserts/' ~ m.image) }}" alt="{{ m.name }}">
             <div style="flex:1">
               <h5 style="margin:0;">{{ m.name }}</h5>
@@ -269,13 +290,31 @@
   </div>
 </div>
 
+<!-- ORDER-SUMMARY MODAL -->
+<div id="summaryModal" class="modal" aria-hidden="true">
+  <div class="modal-card" style="max-width:560px;width:96%;">
+    <h3>Order Summary</h3>
+    <div style="max-height:200px;overflow:auto;background:rgba(0,0,0,.05);padding:8px;border-radius:8px;">
+      <ul id="summaryList" style="list-style:none;padding:0;margin:0;"></ul>
+    </div>
+    <div style="margin-top:12px;text-align:left;font-weight:700;">Total: ₱<span id="summaryTotal">0.00</span></div>
+    <div style="margin-top:18px;display:flex;gap:8px;justify-content:flex-end;">
+      <button id="summaryCancel" class="small-btn" type="button">Cancel</button>
+      <button id="summaryPay"   class="btn" type="button">Pay</button>
+    </div>
+  </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</div>
+
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js   "></script>
 <script>
 $(document).ready(function(){
     let selectedItems=[], selectedTableId=null, payReservationId=null;
-    
+    /* store full item data when added */
+    function itemData(id,name,price,qty,cat,img){ return {id,name,price,qty,cat,img}; }
 
     /* ---------- EXISTING FUNCTIONS (unchanged) ---------- */
     function renderSelectedItems(){
@@ -306,8 +345,15 @@ $(document).ready(function(){
     });
 
     $(".menu-list").on("click",".add-item",function(){
-        const card=$(this).closest(".menu-card"), id=card.data("id"), name=card.data("name"), price=parseFloat(card.data("price"));
-        const existing=selectedItems.find(x=>String(x.id)===String(id)); if(existing) existing.qty++; else selectedItems.push({id,name,price,qty:1});
+        const card=$(this).closest(".menu-card"), 
+              id=card.data("id"), 
+              name=card.data("name"), 
+              price=parseFloat(card.data("price")),
+              cat=card.data("cat"),
+              img=card.data("img");
+        const existing=selectedItems.find(x=>String(x.id)===String(id));
+        if(existing) existing.qty++; 
+        else selectedItems.push(itemData(id,name,price,1,cat,img));
         renderSelectedItems();
     });
 
@@ -347,58 +393,132 @@ $(document).ready(function(){
     });
 }
 
-
-
-    /* ---------- BOOK (unchanged) ---------- */
+    /* ---------- NEW BOOK-NOW FLOW ---------- */
     $("#bookBtn").click(function(){
-        const date = $("#res_date").val(),
-              timeRaw = $("#res_time").val(),
-              people = parseInt($("#res_people").val(),10) || 1;
+        if(!selectedItems.length || !selectedTableId || !$("#res_date").val()){
+            alert("Please pick a table, date, time and at least one item.");
+            return;
+        }
+        openSummaryModal();          // show editable summary
+    });
 
-        if(!date || !timeRaw || !people) { alert("Fill date/time/people"); return; }
+    /* ---------- ORDER-SUMMARY MODAL ---------- */
+    function openSummaryModal(){
+        renderSummaryList();         // fill list
+        $("#summaryModal").fadeIn(200);
+        centerPopup("#summaryModal");
+    }
 
-        const time = convertTo24Hour(timeRaw);
+    /* populate summary list (editable) WITH image & category & conditional minus */
+    function renderSummaryList(){
+        const list=$("#summaryList"); list.empty(); let tot=0;
 
-        const payload = { table_id: selectedTableId, date, time, people, items: selectedItems };
+        /* ----  NEW: columnised layout  ---- */
+        const cols={Drinks:[],'Main Food':[],Desserts:[]};
+        selectedItems.forEach(it=>{ cols[it.cat].push(it); });
 
+        Object.keys(cols).forEach(cat=>{
+            if(!cols[cat].length) return;
+            const col=$(`<li class="summary-column"><h5>${cat}</h5></li>`);
+            cols[cat].forEach((it,idx)=>{
+                const globalIdx=selectedItems.indexOf(it);
+                const sub=(it.price*it.qty).toFixed(2);
+                const hideMinus= it.qty<=1 ? 'style="display:none;"' : '';
+                col.append(`<div class="summary-card">
+                  <img src="${it.img}" alt="${it.name}">
+                  <div class="summary-info">
+                    <div><b>${it.name}</b></div>
+                    <div>₱${sub}</div>
+                  </div>
+                  <span>
+                    <button class="plus"  data-idx="${globalIdx}">+</button>
+                    <button class="minus" data-idx="${globalIdx}" ${hideMinus}>-</button>
+                    <button class="remove" data-idx="${globalIdx}">×</button>
+                  </span>
+                </div>`);
+                tot+=parseFloat(sub);
+            });
+            list.append(col);
+        });
+
+        $("#summaryTotal").text(tot.toFixed(2));
+    }
+
+    /* live edit inside summary */
+    $("#summaryList").on("click",".plus,.minus,.remove",function(){
+        const idx=$(this).data("idx");
+        if($(this).hasClass("plus")) selectedItems[idx].qty++;
+        else if($(this).hasClass("minus") && selectedItems[idx].qty>1) selectedItems[idx].qty--;
+        else if($(this).hasClass("remove")) selectedItems.splice(idx,1);
+        renderSummaryList();          // refresh list
+        renderSelectedItems();        // keep top panel in sync
+        checkBookBtn();               // enable/disable main button
+        if(!selectedItems.length){ $("#summaryModal").fadeOut(200); } // auto-close if emptied
+    });
+
+    /* Cancel summary */
+    $("#summaryCancel").click(function(){ $("#summaryModal").fadeOut(200); });
+
+    /* Pay inside summary → OTP → success */
+    $("#summaryPay").click(async function(){
+        const date=$("#res_date").val(), timeRaw=$("#res_time").val(), people=$("#res_people").val();
+        if(!date||!timeRaw){ alert("Date/time required"); return; }
+        const time=convertTo24Hour(timeRaw);
+
+        /* 1. ask server for OTP */
+        const {otp:code}=await fetch("{{ url_for('send_otp') }}",{method:"POST"})
+                              .then(r=>r.json()).then(d=>d.success?d:Promise.reject());
+        /* 2. prompt user */
+        const pin=prompt(`Enter OTP to confirm payment:\n${code}`);
+        if(!pin) return;
+        /* 3. verify OTP */
+        const ok=await fetch("{{ url_for('check_otp') }}",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({otp:pin})
+        }).then(r=>r.json());
+        if(!ok.success){ alert(ok.error||"Wrong OTP"); return; }
+
+        /* 4. create reservation + pay */
+        const payload={
+            table_id: selectedTableId,
+            date:date,
+            time:time,
+            people:people,
+            items:selectedItems
+        };
         $.ajax({
-            url: "{{ url_for('book_reservation') }}",
-            type: "POST",
-            contentType: "application/json",
-            data: JSON.stringify(payload),
-            success: function(response){
-                if(response.success){
-                    showSuccess("Reservation Created!");
-                    const newId = response.reservation_id || response.id || Date.now();
-                    const total = selectedItems.reduce((s,it)=>s + (it.price*it.qty),0);
-                    const reservationToShow = {
-                        id: newId, name: "{{ session.username|e }}", time: `${date} ${time}`, table_id: selectedTableId,
-                        people, status: response.status || 'Pending', payment_method: response.payment_method || 'none',
-                        payment_status: response.payment_status || 'unpaid', items: selectedItems.map(it=>({name:it.name,qty:it.qty,price:it.price})),
-                        total: total.toFixed(2)
+            url:"{{ url_for('book_reservation') }}",
+            type:"POST",
+            contentType:"application/json",
+            data:JSON.stringify(payload),
+            success:function(res){
+                if(res.success){
+                    $("#summaryModal").fadeOut(200);
+                    showSuccess("Payment successful – reservation confirmed!");
+                    /* add to list, clear UI, mark table reserved … same as your old code */
+                    const newId=res.reservation.id||res.reservation_id||Date.now();
+                    const total=selectedItems.reduce((s,it)=>s+(it.price*it.qty),0);
+                    const row={
+                        id:newId, name:"{{ session.username|e }}", time:`${date} ${time}`,
+                        table_id:selectedTableId, people:people, status:'Pending', payment_method:'cash',
+                        payment_status:'paid', items:selectedItems.map(it=>({name:it.name,qty:it.qty,price:it.price})), total:total.toFixed(2)
                     };
-                    addReservationRow(reservationToShow);
-                    
-                    // --- mark table as reserved on floor map with date and time ---
-if(selectedTableId){
-    const tEl = $(`.table[data-id='${selectedTableId}']`);
-    tEl.removeClass("available selected").addClass("reserved");
-    tEl.html(`Reserved<br>${date} ${time}`);
-}
+                    addReservationRow(row);
 
-                    
-                    // clear UI
-                    selectedItems = []; renderSelectedItems(); $(".table").removeClass("selected"); selectedTableId=null;
+                    if(selectedTableId){
+                        const tEl=$(`.table[data-id='${selectedTableId}']`);
+                        tEl.removeClass("available selected").addClass("reserved");
+                        tEl.html(`Reserved<br>${date} ${time}`);
+                    }
+                    selectedItems=[]; renderSelectedItems(); $(".table").removeClass("selected"); selectedTableId=null;
                     $("#selectedTable").text('None'); $("#res_date").val(''); $("#res_time").prop('selectedIndex',0); $("#res_people").val(1);
                     checkBookBtn();
-                } else {
-                    alert("Reservation failed: " + (response.error || 'unknown'));
+                }else{
+                    alert("Booking failed: "+(res.error||'unknown'));
                 }
             },
-            error: function(xhr, textStatus, errorThrown){
-                console.error("POST {{ url_for('book_reservation') }} failed:", xhr.status, xhr.responseText || errorThrown);
-                alert("Booking failed — check browser console for server response (500).");
-            }
+            error:function(xhr){ alert("Booking error – check console."); console.error(xhr); }
         });
     });
 
@@ -508,7 +628,7 @@ async function otpThenPay(reservationId, method) {
   // 3. verify
   const ok = await fetch("{{ url_for('check_otp') }}", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: {"Content-Type":"application/json"},
       body: JSON.stringify({otp: supplied})
   }).then(r => r.json());
   if (!ok.success) { alert(ok.error || "Wrong code"); return; }
