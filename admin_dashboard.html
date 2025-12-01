@@ -204,6 +204,11 @@ button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; font-
   <div class="box" id="successText">Success</div>
 </div>
 
+<!-- expose server data -->
+<script>
+const RESERVATIONS = {{ reservations | tojson }};
+const TABLES       = {{ tables | tojson }};
+</script>
 
 <script>
         
@@ -455,7 +460,7 @@ document.getElementById('adminUpdateForm').addEventListener('submit', function(e
     const people = document.getElementById('adm_upd_people').value;
     const table_id = document.getElementById('adm_upd_table').value;
     if(!id || !date || !time || !table_id){ alert('Please fill all fields.'); return; }
-    const payload = { id, time: date + ' ' + time, people, table_id };
+    const payload = { id, time: date + ' ' + time, people, table_id, items: [] }; // items added
     fetch('{{ url_for("update_reservation") }}', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
     .then(parseJSONSafely)
     .then(d=>{
